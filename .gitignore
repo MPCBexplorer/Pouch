@@ -1,0 +1,22 @@
+# 编译产物
+server/out/
+
+# 自动备份与损坏文件隔离（这些是运行时产物，不入版本库）
+data/.backup/
+*.corrupt
+*.corrupt-duplicate
+.tmp/
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# IDE 文件
+.classpath
+.project
+.vscode/
+
+# 运行时日志
+server/run.log
+server/run.err.log
+server/server.pid
