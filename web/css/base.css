@@ -1,0 +1,99 @@
+/* base.css — reset 与全局基础样式。所有外观只引用 tokens.css 的 var(--...)，
+   本文件不得出现颜色/间距字面量（0、1px、百分比、rem 字号基准除外，见 tokens 规则）。 */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-width: 320px;                 /* 设计下限（截至 320px 手机） */
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: var(--lh-normal);
+  color: var(--text);
+  background: var(--bg-page);
+  transition: background var(--dur-base) var(--ease-in-out),
+              color var(--dur-base) var(--ease-in-out);
+}
+
+h1, h2, h3, h4 { line-height: var(--lh-tight); font-weight: var(--fw-semibold); margin: 0 0 var(--sp-3); }
+h1 { font-size: var(--fs-xl); }
+h2 { font-size: var(--fs-lg); }
+h3 { font-size: var(--fs-md); }
+
+p { margin: 0 0 var(--sp-3); }
+
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---------- 键盘可达性：全局焦点环（用户故事 61，键盘是一等公民） ----------
+   :focus:not(:focus-visible) 清除鼠标点击留下的残余焦点环；
+   :focus-visible 只在键盘导航时画出高对比度 2px 轮廓。
+   outline 不用 border（会改变盒模型布局），因为那是"焦点的视觉标记"，
+   独立于元素的边框样式。 */
+:focus:not(:focus-visible) { outline: none; }
+:focus-visible {
+  outline: var(--ring-w) solid var(--brand);
+  outline-offset: var(--ring-offset);
+  border-radius: var(--r-sm);
+}
+
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; padding: 0; }
+input, textarea, select { font: inherit; color: inherit; }
+code, pre, .mono { font-family: var(--font-mono); }
+
+/* 语义色辅助类（组件用 var 引用） */
+.text-muted { color: var(--text-muted); }
+.text-faint { color: var(--text-faint); }
+
+/* ---------- 主题过渡 ----------
+   html 上切 data-theme 时，body 的 background/color 与卡片背景平滑过渡 200ms。 */
+body, .card {
+  transition: background var(--dur-base) var(--ease-in-out),
+              color var(--dur-base) var(--ease-in-out),
+              border-color var(--dur-base) var(--ease-in-out);
+}
+
+/* ---------- 通用卡片 ---------- */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--sh-sm);
+  padding: var(--sp-5);
+}
+
+/* ---------- 通用徽标（badge） ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 2px var(--sp-2);
+  border-radius: var(--r-full);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+}
+.badge-inspiration { background: var(--cat-inspiration-bg); color: var(--cat-inspiration); }
+.badge-question    { background: var(--cat-question-bg);    color: var(--cat-question); }
+.badge-knowledge   { background: var(--cat-knowledge-bg);   color: var(--cat-knowledge); }
+.badge-todo        { background: var(--cat-todo-bg);        color: var(--cat-todo); }
+
+/* ---------- 通用按钮 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  background: var(--bg-hover);
+  color: var(--text);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.btn:hover { background: var(--bg-active); }
+.btn-primary { background: var(--brand); color: var(--on-brand); }
+.btn-primary:hover { background: var(--brand-hover); }

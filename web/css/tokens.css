@@ -1,0 +1,188 @@
+/* ============================================================
+   Pouch 设计 Token
+   规则：任何 .css 文件中出现的具体颜色、px 间距、圆角值都视为 bug。
+   唯一例外：0 和 1px（边框宽度）。所有颜色字面量只出现在本文件。
+   ============================================================ */
+
+:root {
+  /* ---------- 色板：基础色阶 ---------- */
+  --gray-0:   #ffffff;
+  --gray-25:  #fcfcfd;
+  --gray-50:  #f7f8fa;
+  --gray-100: #f0f1f4;
+  --gray-200: #e3e5ea;
+  --gray-300: #cdd1d9;
+  --gray-400: #a3a9b5;
+  --gray-500: #767d8b;
+  --gray-600: #575e6b;
+  --gray-700: #3f4550;
+  --gray-800: #282c34;
+  --gray-900: #171a1f;
+
+  /* 主色：靛蓝 */
+  --brand-50:  #eef2ff;
+  --brand-100: #dce3fd;
+  --brand-200: #bcc9fb;
+  --brand-400: #6b82ee;
+  --brand-500: #4c63e0;
+  --brand-600: #3a4fc4;
+  --brand-700: #2f3f9c;
+
+  /* 语义色 */
+  --success-50:  #ecfdf5;
+  --success-500: #10b981;
+  --success-600: #059669;
+  --warning-50:  #fffbeb;
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+  --danger-50:   #fef2f2;
+  --danger-500:  #ef4444;
+  --danger-600:  #dc2626;
+
+  /* ---------- 类别标识色 ---------- */
+  --cat-inspiration: #8b5cf6;   /* 灵感 · 紫 */
+  --cat-question:    #f59e0b;   /* 问题 · 琥珀 */
+  --cat-knowledge:   #0ea5e9;   /* 碎片知识 · 天蓝 */
+  --cat-todo:        #10b981;   /* 要做的事 · 翠绿 */
+
+  /* 中性片（"其他 N 个"聚合，恒定中性灰，不参与主题色轮换） */
+  --neutral-slice: #9ca3af;
+
+  /* ---------- 间距：4px 基准 ---------- */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* ---------- 字号与行高 ---------- */
+  --fs-xs:   0.75rem;
+  --fs-sm:   0.8125rem;
+  --fs-base: 0.9375rem;
+  --fs-md:   1.0625rem;
+  --fs-lg:   1.25rem;
+  --fs-xl:   1.5rem;
+  --fs-2xl:  2rem;
+
+  --lh-tight:  1.3;
+  --lh-normal: 1.6;
+  --lh-loose:  1.75;
+
+  /* ---------- 字重 ---------- */
+  --fw-normal:   400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+
+  /* ---------- 字体族 ---------- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", Menlo, monospace;
+  --font-num:  var(--font-sans);
+
+  /* ---------- 圆角 ---------- */
+  --r-sm:   4px;
+  --r-md:   8px;
+  --r-lg:   12px;
+  --r-xl:   16px;
+  --r-full: 9999px;
+
+  /* ---------- 阴影 ---------- */
+  --sh-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --sh-sm: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --sh-md: 0 4px 12px rgba(16, 24, 40, 0.08), 0 2px 4px rgba(16, 24, 40, 0.04);
+  --sh-lg: 0 12px 32px rgba(16, 24, 40, 0.12), 0 4px 8px rgba(16, 24, 40, 0.06);
+
+  /* ---------- 动效 ---------- */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out:     cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:  cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---------- 布局尺寸 ---------- */
+  --nav-w:       232px;
+  --content-max: 1180px;
+  --header-h:    56px;
+  --radius-card: var(--r-lg);
+
+  /* ---------- 焦点环 ---------- */
+  --ring-w:      2px;
+  --ring-offset: 2px;
+}
+
+/* ============================================================
+   主题层：语义 Token。组件只引用 --bg-* / --text-* 等语义名，
+   切换主题只换这一层。
+   ============================================================ */
+
+/* 浅色（默认 = 系统偏好 light） */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-page:     var(--gray-50);
+  --bg-surface:  var(--gray-0);
+  --bg-subtle:   var(--gray-25);
+  --bg-hover:    var(--gray-100);
+  --bg-active:   var(--brand-50);
+
+  --border:        var(--gray-200);
+  --border-strong: var(--gray-300);
+
+  --text:         var(--gray-800);
+  --text-muted:   var(--gray-600);
+  --text-faint:   var(--gray-500);
+  --text-inverse: var(--gray-0);
+
+  --brand:      var(--brand-500);
+  --brand-hover:var(--brand-600);
+  --on-brand:   var(--gray-0);
+
+  --success: var(--success-500);
+  --warning: var(--warning-500);
+  --danger:  var(--danger-500);
+
+  /* 类别色在浅色下的淡背景（徽标底色） */
+  --cat-inspiration-bg: #f5f3ff;
+  --cat-question-bg:    #fffbeb;
+  --cat-knowledge-bg:   #f0f9ff;
+  --cat-todo-bg:        #ecfdf5;
+}
+
+/* 暗色（手动切换或 prefers-color-scheme: dark） */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-page:     var(--gray-900);
+  --bg-surface:  var(--gray-800);
+  --bg-subtle:   var(--gray-800);
+  --bg-hover:    var(--gray-700);
+  --bg-active:   var(--brand-700);
+
+  --border:        var(--gray-700);
+  --border-strong: var(--gray-600);
+
+  --text:         var(--gray-100);
+  --text-muted:   var(--gray-400);
+  --text-faint:   var(--gray-500);
+  --text-inverse: var(--gray-900);
+
+  --brand:      var(--brand-400);
+  --brand-hover:var(--brand-500);
+  --on-brand:   var(--gray-900);
+
+  --success: var(--success-500);
+  --warning: var(--warning-500);
+  --danger:  var(--danger-500);
+
+  --cat-inspiration-bg: rgba(139, 92, 246, 0.16);
+  --cat-question-bg:    rgba(245, 158, 11, 0.16);
+  --cat-knowledge-bg:   rgba(14, 165, 233, 0.16);
+  --cat-todo-bg:        rgba(16, 185, 129, 0.16);
+}

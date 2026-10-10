@@ -1,0 +1,95 @@
+/* layout.css — 骨架布局：顶栏 + 主内容区 + 响应式。
+   症状只引 var(--...)，本文件不得出现颜色字面量。 */
+
+/* ---------- 顶栏 ---------- */
+header.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  height: var(--header-h);
+  padding: 0 var(--sp-5);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-brand {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  white-space: nowrap;
+}
+.topbar-brand a { color: inherit; }
+.topbar-brand a:hover { color: var(--brand); text-decoration: none; }
+
+.topbar nav {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex: 1;
+  overflow-x: auto;
+}
+
+.topbar nav a {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.topbar nav a:hover { background: var(--bg-hover); color: var(--text); text-decoration: none; }
+.topbar nav a.active { background: var(--bg-active); color: var(--brand); }
+
+/* 主题切换按钮（固定 32×32 像素方块，内嵌 16×16 图标） */
+.topbar .theme-toggle {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+}
+.topbar .theme-toggle:hover { background: var(--bg-hover); color: var(--text); }
+.topbar .theme-toggle svg { width: 16px; height: 16px; }
+/* 暗色时隐藏太阳、显示月亮；亮色反之（由 JS 切换 data-theme，CSS 随之） */
+[data-theme="dark"] .icon-sun  { display: none; }
+[data-theme="dark"] .icon-moon { display: inline; }
+.icon-moon { display: none; }
+
+/* ---------- 主内容区 ---------- */
+main.page {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--sp-8) var(--sp-5) var(--sp-16);
+}
+
+/* 页面标题行 */
+.page h1 { margin-bottom: var(--sp-6); }
+
+/* 首页看板网格骨架：桌面 2 列，手机 1 列 */
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-4);
+}
+.dashboard .card { min-height: var(--sp-12); }
+/* 跨双列的区块（如"陈旧提醒"清单） */
+.span-2 { grid-column: span 2; }
+
+/* ---------- 响应式：手机宽度 ---------- */
+@media (max-width: 768px) {
+  main.page {
+    padding: var(--sp-5) var(--sp-4) var(--sp-12);   /* 窄屏收紧边距 */
+  }
+  .dashboard { grid-template-columns: 1fr; }          /* 单列堆叠 */
+  .span-2    { grid-column: auto; }                   /* 撤销跨列 */
+  .topbar {
+    gap: var(--sp-2);
+    padding: 0 var(--sp-3);
+  }
+  .topbar-brand { font-size: var(--fs-base); }
+  .topbar nav a { padding: var(--sp-1) var(--sp-2); }
+}
