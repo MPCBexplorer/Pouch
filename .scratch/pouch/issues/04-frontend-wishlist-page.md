@@ -2,7 +2,7 @@
 
 **Parent**: [spec.md](../spec.md)
 
-**Status**: ready-for-agent
+**Status**: resolved
 
 **Blocked by**: 03 Wishlist Backend
 

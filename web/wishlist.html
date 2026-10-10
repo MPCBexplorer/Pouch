@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/css/tokens.css">
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/css/pages.css">
 </head>
 <body>
   <header class="topbar">
@@ -26,9 +27,63 @@
 
   <main class="page">
     <h1>心愿单</h1>
-    <section class="card">
-      <p class="text-muted">（骨架占位 · 阶段 5 实现：条目管理 + 勾选已购 + 三项汇总 + 邻位排序）</p>
+
+    <!-- 三项汇总 + 进度条 -->
+    <section class="card wishlist-summary" aria-label="心愿单汇总">
+      <div class="summary-grid">
+        <div class="summary-item">
+          <span class="summary-label">总心愿</span>
+          <span class="summary-value" id="totalWish">¥0.00</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">已花费</span>
+          <span class="summary-value" id="spent">¥0.00</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">还差</span>
+          <span class="summary-value" id="remaining">¥0.00</span>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrap" hidden>
+        <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+        <span class="progress-text" id="progressText">0%</span>
+      </div>
+    </section>
+
+    <!-- 快速新增表单 -->
+    <section class="card wishlist-quickadd" aria-label="快速新增">
+      <form id="quickAddForm" novalidate>
+        <div class="form-row">
+          <div class="form-field">
+            <label for="wishName">名称</label>
+            <input type="text" id="wishName" name="name" placeholder="例如：HHKB 键盘" required maxlength="120" autocomplete="off">
+          </div>
+          <div class="form-field">
+            <label for="wishAmount">金额（元）</label>
+            <input type="text" id="wishAmount" name="amount" placeholder="例如：2388" required maxlength="20" autocomplete="off" inputmode="decimal">
+          </div>
+          <div class="form-field">
+            <label for="wishNote">备注</label>
+            <input type="text" id="wishNote" name="note" placeholder="例如：等打折" maxlength="500" autocomplete="off">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="quickAddBtn">添加</button>
+      </form>
+    </section>
+
+    <!-- 条目列表 -->
+    <section class="card wishlist-list" aria-label="心愿条目列表">
+      <div id="wishlistError" class="error-card" hidden></div>
+      <ul class="wishlist-items" id="wishlistItems" role="list"></ul>
+      <p class="empty-state" id="emptyState" hidden>还没有心愿，去添加一条吧</p>
     </section>
   </main>
+
+  <!-- 共享模块 -->
+  <script src="/js/shared/currency.js"></script>
+  <!-- 页面脚本 -->
+  <script type="module" src="/js/wishlist.js"></script>
 </body>
 </html>

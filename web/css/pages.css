@@ -1,0 +1,348 @@
+/* pages.css — 页面级样式（仅引用 tokens.css 的 var(--...)，不得出现颜色/间距字面量） */
+
+/* ============ Wishlist Page ============ */
+
+.wishlist-summary {
+  margin-bottom: var(--sp-6);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+
+@media (max-width: 600px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  background: var(--bg-subtle);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+}
+
+.summary-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-weight: var(--fw-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.summary-value {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  font-family: var(--font-num);
+}
+
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  height: 24px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 100%;
+  background: var(--bg-subtle);
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--brand);
+  border-radius: var(--r-full);
+  transition: width var(--dur-base) var(--ease-out);
+}
+
+.progress-text {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  font-family: var(--font-num);
+  min-width: 3.5em;
+  text-align: right;
+}
+
+/* 快速新增表单 */
+.wishlist-quickadd {
+  margin-bottom: var(--sp-6);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr;
+  gap: var(--sp-3);
+  align-items: end;
+  margin-bottom: var(--sp-3);
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.form-field label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-weight: var(--fw-medium);
+}
+
+.form-field input {
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-surface);
+  color: var(--text);
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.form-field input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 var(--ring-w) var(--brand);
+}
+
+.form-field input::placeholder {
+  color: var(--text-faint);
+}
+
+.wishlist-quickadd .btn {
+  width: 100%;
+  max-width: 200px;
+}
+
+/* 条目列表 */
+.wishlist-list {
+  overflow: hidden;
+}
+
+.wishlist-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wishlist-item {
+  border-bottom: 1px solid var(--border);
+  transition: background var(--dur-fast);
+}
+
+.wishlist-item:last-child {
+  border-bottom: none;
+}
+
+.wishlist-item:hover {
+  background: var(--bg-hover);
+}
+
+.wish-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  min-height: 48px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.wish-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+.wish-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wish-name.purchased {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.wish-amount {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  font-family: var(--font-num);
+  white-space: nowrap;
+  min-width: 80px;
+  text-align: right;
+}
+
+.wish-amount.purchased {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.wish-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  padding: 0 0 var(--sp-3) var(--sp-1);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.wish-note {
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wish-purchased-at {
+  color: var(--success);
+  font-weight: var(--fw-medium);
+}
+
+.wish-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin-left: var(--sp-2);
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+  background: transparent;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+
+.btn-icon:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.btn-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-icon.btn-danger:hover:not(:disabled) {
+  background: var(--danger-50);
+  color: var(--danger);
+}
+
+[data-theme="dark"] .btn-icon.btn-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* 空态 */
+.empty-state {
+  padding: var(--sp-8);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--fs-base);
+}
+
+/* 错误卡片 */
+.error-card {
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  background: var(--danger-50);
+  border: 1px solid var(--danger);
+  border-radius: var(--r-md);
+  color: var(--danger-600);
+  font-size: var(--fs-sm);
+}
+
+[data-theme="dark"] .error-card {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ============ List Page (预留) ============ */
+.list-sidebar {
+  /* 阶段 3 实现 */
+}
+
+.list-filterbar {
+  /* 阶段 3 实现 */
+}
+
+.list-view {
+  /* 阶段 3 实现 */
+}
+
+/* ============ Detail Page (预留) ============ */
+.detail-header {
+  /* 阶段 4 实现 */
+}
+
+.detail-content {
+  /* 阶段 4 实现 */
+}
+
+.detail-notes {
+  /* 阶段 4 实现 */
+}
+
+.detail-tags {
+  /* 阶段 4 实现 */
+}
+
+/* ============ Index Page (预留) ============ */
+.dashboard-stats {
+  /* 阶段 2 实现 */
+}
+
+.completion-ring {
+  /* 阶段 2 实现 */
+}
+
+.random-recall {
+  /* 阶段 2 实现 */
+}
+
+.compose-ring {
+  /* 阶段 2 实现 (Ticket 07 compose-ring.js) */
+}
+
+.stale-list {
+  /* 阶段 2 实现 */
+}
+
+.warning-banner {
+  /* 阶段 2 实现 */
+}
