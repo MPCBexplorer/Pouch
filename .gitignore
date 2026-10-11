@@ -11,10 +11,14 @@ data/.backup/
 Thumbs.db
 .DS_Store
 
-# IDE 文件
+# IDE/AI 文件
 .classpath
 .project
 .vscode/
+skills/
+docs/
+.scratch/
+agents.md
 
 # 运行时日志
 server/run.log
