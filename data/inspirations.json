@@ -1,18 +1,5 @@
 {
   "version": 1,
-  "updatedAt": "2026-10-10T20:41:36.0999792+08:00",
-  "records": [
-    {
-      "id": "485d1283-69b2-4c57-b1ff-38011ccac934",
-      "type": "inspiration",
-      "title": "test inspiration",
-      "content": "",
-      "tags": [],
-      "notes": [],
-      "status": "active",
-      "createdAt": "2026-10-10T20:41:36.0999792+08:00",
-      "updatedAt": "2026-10-10T20:41:36.0999792+08:00",
-      "pinned": false
-    }
-  ]
+  "updatedAt": "2026-10-11T10:36:39.895+08:00",
+  "records": []
 }

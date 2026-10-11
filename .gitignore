@@ -18,7 +18,7 @@ Thumbs.db
 skills/
 docs/
 .scratch/
-agents.md
+AGENTS.md
 
 # 运行时日志
 server/run.log

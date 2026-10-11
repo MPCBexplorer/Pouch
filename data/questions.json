@@ -1,19 +1,5 @@
 {
   "version": 1,
-  "updatedAt": "2026-10-10T20:41:36.1445802+08:00",
-  "records": [
-    {
-      "id": "fdd16d6d-8a16-4555-8a45-4d2818acc539",
-      "type": "question",
-      "title": "test question",
-      "content": "",
-      "tags": [],
-      "notes": [],
-      "status": "open",
-      "createdAt": "2026-10-10T20:41:36.1445802+08:00",
-      "updatedAt": "2026-10-10T20:41:36.1445802+08:00",
-      "pinned": false,
-      "source": "book"
-    }
-  ]
+  "updatedAt": "2026-10-11T10:36:39.895+08:00",
+  "records": []
 }
