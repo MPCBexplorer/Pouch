@@ -163,7 +163,9 @@ public class RecordService {
             old.setType(target.wire());
             old.clearForeignFields(target);   // 必须在 applyAll 之后：清掉源类别专有字段，无残留
         }
-        if (c == Category.TODO && target == Category.TODO) {
+        // doneAt 联动以【最终类别】为准：只要落库的是 todo，done 就要有完成时间、
+        // 非 done 就不能留完成时间（01 §1.2.2）。跨类别转入 todo 时同样成立。
+        if (target == Category.TODO) {
             String now = Svc.now();
             if ("done".equals(old.status()) && old.doneAt() == null) old.setDoneAt(now);
             else if (!"done".equals(old.status()) && old.doneAt() != null) old.setDoneAt(null);

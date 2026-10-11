@@ -136,8 +136,9 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
   }
 
   function statusSelect(cat) {
+    // 状态枚举来自元数据（用户故事 62）：/api/meta/categories 的 statuses 是 [{value,label}]
     const options = [{ value: '', text: '全部状态' }].concat(
-      cat.allowedStatuses.map(s => ({ value: s, text: statusLabel(cat, s) }))
+      (cat.statuses || []).map(s => ({ value: s.value, text: s.label }))
     );
     return el('select', {
       class: 'select',
@@ -149,7 +150,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
   }
 
   function tagSelect() {
-    return el('div', { class: 'select-wrapper' }, [
+    return el('div', { class: 'select-wrapper' , children: [
       el('select', {
         class: 'select',
         attrs: { 'aria-label': '按标签筛选', multiple: true },
@@ -164,7 +165,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
           el('option', { value: '', text: '全部标签', disabled: true, selected: !state.tags.length }),
         ]
       })
-    ]);
+    ]});
   }
 
   function subjectSelect() {
@@ -191,7 +192,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
   }
 
   function dueRangeInputs() {
-    return el('div', { class: 'due-range' }, [
+    return el('div', { class: 'due-range' , children: [
       el('input', {
         type: 'date',
         class: 'input input-date',
@@ -207,7 +208,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
         attrs: { 'aria-label': '截止日期到', placeholder: '结束日期' },
         on: { change: e => { state.dueTo = e.target.value; state.page = 1; reload(); } }
       }),
-    ]);
+    ]});
   }
 
   function sortSelect() {
@@ -331,10 +332,10 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
   }
 
   function makeChip(text, onRemove) {
-    return el('span', { class: 'filter-chip' }, [
+    return el('span', { class: 'filter-chip', children: [
       el('span', { text }),
-      el('button', { class: 'chip-remove', 'aria-label': `移除筛选: ${text}`, on: { click: onRemove } }, ['×'])
-    ]);
+      el('button', { class: 'chip-remove', 'aria-label': `移除筛选: ${text}`, on: { click: onRemove }, children: ['×'] })
+    ]});
   }
 
   function clearFilters() {
@@ -366,8 +367,8 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
     const row = el('article', {
       class: ['row', `row-${r.type}`, r.pinned && 'is-pinned'],
       style: { '--card-accent': `var(--cat-${r.type})` },
-      attrs: { 'data-id': r.id }
-    }, [
+      attrs: { 'data-id': r.id },
+      children: [
       statusControl(r, cat),
       el('a', { class: 'row-main', href: detailUrl(r), children: [
         el('h3', { class: 'row-title', children: [
@@ -385,7 +386,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
         ]}),
       ]}),
       el('time', { class: 'row-time', text: relTime(r.updatedAt), attrs: { title: '更新于 ' + fullTime(r.updatedAt), datetime: r.updatedAt } }),
-    ]);
+    ]});
 
     return row;
   }
@@ -583,7 +584,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
 
     const children = fields.map(f => {
       if (f.type === 'textarea') {
-        return el('div', { class: 'form-field' }, [
+        return el('div', { class: 'form-field' , children: [
           el('label', { attrs: { for: `modal-${f.name}` }, text: f.label }),
           el('textarea', {
             id: `modal-${f.name}`,
@@ -594,10 +595,10 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
             maxlength: f.maxlength || 100000,
             required: f.required || false
           })
-        ]);
+        ]});
       }
       if (f.type === 'select') {
-        return el('div', { class: 'form-field' }, [
+        return el('div', { class: 'form-field' , children: [
           el('label', { attrs: { for: `modal-${f.name}` }, text: f.label }),
           el('select', {
             id: `modal-${f.name}`,
@@ -605,9 +606,9 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
             class: 'input input-select',
             children: f.options.map(o => el('option', { value: o.value, text: o.text, selected: o.value === f.default }))
           })
-        ]);
+        ]});
       }
-      return el('div', { class: 'form-field' }, [
+      return el('div', { class: 'form-field' , children: [
         el('label', { attrs: { for: `modal-${f.name}` }, text: f.label }),
         el('input', {
           id: `modal-${f.name}`,
@@ -618,7 +619,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
           maxlength: f.maxlength || 524288,
           required: f.required || false
         })
-      ]);
+      ]});
     });
 
     render(els.modalBody, frag(children));
@@ -689,6 +690,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
       CATEGORIES = Array.isArray(catData?.categories) ? catData.categories : [];
       readStateFromURL();
       renderSidebar();
+      refreshOverviewCounts();   // 侧栏计数徽标：进入页面即有真实计数（用户故事 27）
       await reload();
     } catch (e) {
       console.error('初始化失败:', e);
