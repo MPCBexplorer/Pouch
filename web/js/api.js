@@ -21,7 +21,8 @@ const LIMITS = {
   subject: 60,
   subjectLayers: 3,
   subjectLayer: 20,
-  wishNote: 200,
+  wishName: 120,
+  wishNote: 500,
 };
 
 const API = (function () {

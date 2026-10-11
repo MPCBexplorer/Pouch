@@ -101,7 +101,7 @@ public class JsonStore {
                 System.out.println("[init] " + c.label() + "（" + c.fileName() + "）不存在，已创建空文件");
             }
         }
-        Path wp = dataDir.resolve("wishlist.json");
+        Path wp = dataDir.resolve(Category.WISHLIST_FILE);
         if (!Files.exists(wp)) {
             try {
                 Files.writeString(wp, seed("items"), StandardCharsets.UTF_8);
@@ -115,7 +115,7 @@ public class JsonStore {
         for (Category c : Category.values()) {
             if (!loadSlot(recordSlots.get(c), dataDir.resolve(c.fileName()), "records", Record.class)) loadFailed = true;
         }
-        if (!loadSlot(wishSlot, dataDir.resolve("wishlist.json"), "items", WishItem.class)) loadFailed = true;
+        if (!loadSlot(wishSlot, dataDir.resolve(Category.WISHLIST_FILE), "items", WishItem.class)) loadFailed = true;
         if (loadFailed) {
             // 有一类以空数据启动（文件损坏且无可用备份）——不算致命，服务照常
             // 有 warning，health 会告诉前端
@@ -554,7 +554,7 @@ public class JsonStore {
 
     /** 写 wishlist.json。调用方须已持有 wishSlot 的 writeLock。 */
     void writeThroughWish() {
-        Path target = dataDir.resolve("wishlist.json");
+        Path target = dataDir.resolve(Category.WISHLIST_FILE);
         String json = serializeWishes();
         atomicWrite(target, json);
     }

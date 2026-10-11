@@ -5,12 +5,16 @@ import java.util.Set;
 /**
  * 四个记录类别。文件名映射的唯一权威来源——
  * 代码中任何位置都不得硬编码 "todos.json" 之类的字符串。
+ * 心愿单不是记录类别，但其数据文件名同样只在此声明（见 WISHLIST_FILE）。
  */
 public enum Category {
     INSPIRATION("inspiration", "灵感", "inspirations.json"),
     QUESTION   ("question",    "问题", "questions.json"),
     KNOWLEDGE  ("knowledge",   "碎片知识", "knowledge.json"),
     TODO       ("todo",        "要做的事", "todos.json");
+
+    /** 心愿单数据文件名（与记录类别平级的第五个文件，ADR-003 不复用记录模型）。 */
+    public static final String WISHLIST_FILE = "wishlist.json";
 
     private final String wire;       // API 与 JSON 中的取值
     private final String label;      // 界面显示名

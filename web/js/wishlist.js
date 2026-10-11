@@ -60,6 +60,8 @@ import { formatCents, parseYuan } from '/js/shared/currency.js';
       if (k === 'class') el.className = v;
       else if (k === 'dataset') Object.entries(v).forEach(([dk, dv]) => el.dataset[dk] = dv);
       else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+      else if (typeof v === 'boolean') el[k] = v;   // checked/disabled 等布尔属性必须走属性对象：
+                                                   // setAttribute('checked','false') 在浏览器里依然为真
       else el.setAttribute(k, v);
     });
     children.forEach(c => {
@@ -294,6 +296,8 @@ import { formatCents, parseYuan } from '/js/shared/currency.js';
         showError('金额无效：必须为整数分，且不超过 1,000,000.00 元');
       } else if (err.code === 'invalid_wish_name') {
         showError('名称需 1~120 字符');
+      } else if (err.code === 'invalid_wish_note') {
+        showError('备注需 500 字符以内');
       } else {
         showError('新增失败，请重试');
       }
