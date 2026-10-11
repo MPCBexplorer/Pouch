@@ -29,8 +29,10 @@ export function el(tag, props = {}) {
       case 'attrs':   for (const [a, val] of Object.entries(v)) {
                         if (val !== null && val !== undefined) node.setAttribute(a, val);
                       } break;
-      case 'children': (Array.isArray(v) ? v : [v]).filter(Boolean)
-                        .forEach(c => node.append(c)); break;
+      case 'children': (Array.isArray(v) ? v : [v])
+                         .flat(Infinity)        // 摊平嵌套 map() 结果——浏览器 append(数组) 会把它转成 "[object Object]" 文本
+                         .filter(Boolean)
+                         .forEach(c => node.append(c)); break;
       default:        node[k] = v;   // value / checked / disabled / href 等直接属性
     }
   }
@@ -90,6 +92,42 @@ export function toast(message, kind = 'error') {
     t.classList.remove('is-visible');
     setTimeout(() => t.remove(), 250);
   }, 3000);
+}
+
+/**
+ * 数据告警横幅（/api/health 的 warnings）。detail.js / index.js 共用（Ticket 08 收敛）。
+ * 数据文件损坏并从备份恢复时必须让用户知道——静默恢复等于隐瞒数据丢失（docs/04 §4.8.6）。
+ */
+export function renderWarnings(host, warnings) {
+  if (!warnings.length) { render(host, []); return; }
+  render(host, el('div', { class: 'warn-banner', attrs: { role: 'alert' }, children: [
+    el('div', { class: 'warn-body', children: [
+      el('strong', { text: '数据告警' }),
+      el('ul', { children: warnings.map(w => el('li', { text: w })) }),
+      el('p', { class: 'warn-hint',
+                text: '损坏的原文件已保留为 .corrupt，备份在 data/.backup/ 目录。详情见 docs/05 §5.6。' }),
+    ]}),
+    el('button', { class: 'link-btn', text: '知道了', on: { click: () => render(host, []) } }),
+  ]}));
+}
+
+/**
+ * 友好错误卡（区块级）。网络失败时附启动提示（spec 用户故事 66）。
+ * @param {string} title 区块标题
+ * @param {Error} e api.js 抛出的错误（isNetwork / message）
+ * @param {Array<{text:string, onClick:Function}>} [actions] 操作按钮，默认只给"重试"
+ */
+export function errorCard(title, e, actions) {
+  const isNet = e && e.isNetwork;
+  const btns = actions || [{ text: '重试', onClick: () => location.reload() }];
+  return el('div', { class: 'card card-error', children: [
+    el('p', { class: 'error-title', text: title }),
+    el('p', { class: 'error-msg', text: isNet ? e.message : (e && e.message ? e.message : '未知错误') }),
+    isNet ? el('p', { class: 'error-hint',
+                      text: '提示：先运行 server\\start.ps1 启动本地服务，再刷新本页。' }) : null,
+    el('div', { class: 'detail-fatal-actions', children: btns.map(b =>
+      el('button', { class: 'btn btn-ghost', text: b.text, on: { click: b.onClick } })) }),
+  ]});
 }
 
 /**
