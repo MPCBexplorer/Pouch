@@ -11,7 +11,7 @@
  *   - 不用字符串拼接 HTML；唯一 DOM 注入入口是 dom.js 的 el({html})，且只喂 DOMPurify 净化后的 Markdown
  */
 import { API, LIMITS } from '/js/api.js';
-import { el, render, frag, excerpt, relTime, fullTime, toast, statusLabel } from '/js/dom.js';
+import { el, render, frag, excerpt, relTime, fullTime, toast, statusLabel, renderWarnings, errorCard } from '/js/dom.js';
 
 // ============ 常量 ============
 
@@ -692,47 +692,25 @@ window.addEventListener('beforeunload', e => {
   if (editing && isDirty()) { e.preventDefault(); e.returnValue = ''; }
 });
 
-// ============ 告警横幅 / 错误卡 / Toast ============
+// ============ 告警横幅 / 错误卡（共享件：dom.js） ============
 
 /** 数据文件损坏并从备份恢复时，必须让用户知道——静默恢复等于隐瞒数据丢失（docs/04 §4.8.6）。 */
-function renderWarnings(warnings) {
-  const host = els.warnBanner;
-  if (!warnings.length) { render(host, []); return; }
-  render(host, el('div', { class: 'warn-banner', attrs: { role: 'alert' }, children: [
-    el('div', { class: 'warn-body', children: [
-      el('strong', { text: '数据告警' }),
-      el('ul', { children: warnings.map(w => el('li', { text: w })) }),
-      el('p', { class: 'warn-hint',
-                text: '损坏的原文件已保留为 .corrupt，备份在 data/.backup/ 目录。详情见 docs/05 §5.6。' }),
-    ]}),
-    el('button', { class: 'link-btn', text: '知道了', on: { click: () => render(host, []) } }),
-  ]}));
-}
-
 async function loadWarnings() {
   try {
     const h = await API.getHealth();
-    renderWarnings(h.warnings || []);
+    renderWarnings(els.warnBanner, h.warnings || []);
   } catch { /* 健康检查失败不打扰用户，其他区块会各自报错 */ }
 }
 
+/** 致命错误卡：dom.js errorCard + 详情页专属的"返回列表"动作。 */
 function showFatal(title, e) {
-  const isNet = e && (e.isNetwork || e.status === 0);
   els.error.hidden = false;
   els.card.hidden = true;
   render(els.toolbarActions, []);
-  render(els.error, el('div', { class: 'detail-fatal', children: [
-    el('p', { class: 'error-title', text: title }),
-    el('p', { class: 'error-msg', text: isNet ? e.message : (e?.message || '未知错误') }),
-    isNet ? el('p', { class: 'error-hint',
-                      text: '提示：先运行 server\\start.ps1 启动本地服务，再刷新本页。' }) : null,
-    el('div', { class: 'detail-fatal-actions', children: [
-      el('button', { class: 'btn btn-ghost', text: '重试', on: { click: () => location.reload() } }),
-      el('button', { class: 'btn btn-ghost', text: '返回列表', on: { click: () => goBack(true) } }),
-    ]}),
-  ]}));
+  render(els.error, errorCard(title, e, [
+    { text: '重试', onClick: () => location.reload() },
+    { text: '返回列表', onClick: () => goBack(true) },
+  ]));
 }
-
-// ============ Toast（共享件：dom.js import） ============
 
 boot();

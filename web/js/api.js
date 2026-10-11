@@ -142,11 +142,11 @@ const API = (function () {
   async function getOverview() {
     return request('/api/stats/overview');
   }
-  async function getRandom(type, count, exclude) {
+  /** 随机回顾：excludeIds 为本轮已看（docs/03 §3.10 签名）。 */
+  async function getRandom(type, excludeIds) {
     return request('/api/stats/random' + qs({
       type,
-      count: count === undefined ? undefined : String(count),
-      exclude: exclude && exclude.length ? exclude.join(',') : undefined
+      exclude: excludeIds && excludeIds.length ? excludeIds.join(',') : undefined
     }));
   }
   async function getStale(limit) {
