@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/css/tokens.css">
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/css/pages.css">
 </head>
 <body>
   <header class="topbar">
@@ -24,11 +25,30 @@
     </button>
   </header>
 
-  <main class="page">
-    <h1>详情</h1>
-    <section class="card">
-      <p class="text-muted">（骨架占位 · 阶段 4 实现：Markdown 只读渲染 + 编辑态 + 追加笔记）</p>
-    </section>
+  <!-- /api/health 的 warnings（docs/04 §4.8.6） -->
+  <div id="warnBanner"></div>
+
+  <main class="page detail-page">
+    <div class="detail-toolbar">
+      <button type="button" class="btn btn-ghost" id="backBtn">← 返回</button>
+      <div class="detail-toolbar-actions" id="toolbarActions"></div>
+    </div>
+
+    <div id="detailError" class="error-card" hidden></div>
+
+    <article class="detail-card card" id="detailCard">
+      <header class="detail-header" id="detailHeader"></header>
+      <div id="detailGuide" hidden></div>
+      <section class="detail-content" id="detailContent" aria-label="正文"></section>
+      <section class="detail-tags" id="detailTags" aria-label="标签"></section>
+      <section class="detail-notes" id="detailNotes" aria-label="笔记"></section>
+      <footer class="detail-footer" id="detailFooter"></footer>
+    </article>
   </main>
+
+  <!-- 第三方库：本地引用，运行时不访问 CDN（ADR-001/006） -->
+  <script src="/vendor/marked.min.js"></script>
+  <script src="/vendor/purify.min.js"></script>
+  <script type="module" src="/js/detail.js"></script>
 </body>
 </html>

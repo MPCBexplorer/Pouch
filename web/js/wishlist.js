@@ -1,8 +1,9 @@
 /**
  * wishlist.js — 心愿单页完整交互（Ticket 04）
- * 依赖：Currency（全局 Currency.formatCents）、API（全局 API）
- * 约束：不直接 fetch、不 innerHTML、只通过 DOM API 构造、错误卡片友好提示
+ * 依赖：Currency（全局 Currency.formatCents）、API（ES module 导入）
+ * 约束：不直接 fetch、不用字符串拼 HTML、只通过 DOM API 构造、错误卡片友好提示
  */
+import { API } from '/js/api.js';
 (async function () {
   'use strict';
 
@@ -87,7 +88,7 @@
 
   function renderItems(list) {
     items = list;
-    els.wishlistItems.innerHTML = '';
+    els.wishlistItems.replaceChildren();
 
     if (!list.length) {
       els.emptyState.hidden = false;

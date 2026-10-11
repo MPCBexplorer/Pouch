@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/css/tokens.css">
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/css/pages.css">
 </head>
 <body>
   <header class="topbar">
@@ -24,11 +25,56 @@
     </button>
   </header>
 
-  <main class="page">
-    <h1>列表</h1>
-    <section class="card">
-      <p class="text-muted">（骨架占位 · 阶段 3 实现：按类别浏览 + 筛选 + 分页）</p>
-    </section>
+  <main class="page list-page">
+    <div class="list-layout">
+      <!-- 左侧导航 -->
+      <aside class="list-sidebar" aria-label="类别导航">
+        <nav class="cat-nav" id="catNav" role="list"></nav>
+        <div class="sidebar-divider"></div>
+        <nav class="cat-nav" id="extraNav" role="list"></nav>
+      </aside>
+
+      <!-- 右侧内容区 -->
+      <div class="list-content">
+        <!-- 类别标题 -->
+        <header class="list-header">
+          <h1 id="listTitle">列表</h1>
+        </header>
+
+        <!-- 筛选栏 -->
+        <section class="card list-filterbar" aria-label="筛选条件">
+          <div class="filter-row" id="filterBar"></div>
+          <div class="filter-chips" id="filterChips" hidden></div>
+        </section>
+
+        <!-- 列表视图 -->
+        <section class="card list-view" aria-label="记录列表">
+          <div id="listError" class="error-card" hidden></div>
+          <div class="list-body" id="listBody" role="list"></div>
+          <div class="list-pager" id="listPager" hidden></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- 新建记录模态框 -->
+    <dialog class="modal" id="newRecordModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <form class="modal-content" id="newRecordForm" novalidate>
+        <header class="modal-header">
+          <h2 id="modalTitle">新建记录</h2>
+          <button type="button" class="modal-close" aria-label="关闭">&times;</button>
+        </header>
+        <div class="modal-body" id="modalBody"></div>
+        <footer class="modal-footer">
+          <button type="button" class="btn btn-ghost modal-cancel">取消</button>
+          <button type="submit" class="btn btn-primary" id="modalSubmit">创建</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <!-- 背景遮罩（用于模态框外点击关闭） -->
+    <div class="modal-backdrop" id="modalBackdrop" hidden></div>
   </main>
+
+  <script type="module" src="/js/list.js"></script>
 </body>
 </html>

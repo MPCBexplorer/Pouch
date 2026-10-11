@@ -148,6 +148,10 @@
   --warning: var(--warning-500);
   --danger:  var(--danger-500);
 
+  /* 危险底色 / 遮罩层 */
+  --danger-bg: var(--danger-50);
+  --scrim: rgba(16, 24, 40, 0.4);
+
   /* 类别色在浅色下的淡背景（徽标底色） */
   --cat-inspiration-bg: #f5f3ff;
   --cat-question-bg:    #fffbeb;
@@ -180,6 +184,9 @@
   --success: var(--success-500);
   --warning: var(--warning-500);
   --danger:  var(--danger-500);
+
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --scrim: rgba(0, 0, 0, 0.6);
 
   --cat-inspiration-bg: rgba(139, 92, 246, 0.16);
   --cat-question-bg:    rgba(245, 158, 11, 0.16);

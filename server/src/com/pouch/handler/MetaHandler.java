@@ -42,10 +42,12 @@ public class MetaHandler implements Handler {
         Respond.json(ex, 200, body);
     }
 
-    /** GET /api/meta/categories */
+    /** GET /api/meta/categories —— 响应信封 { categories: [...] }，见 03 §3.2 */
     public void handleCategories(HttpExchange ex) throws IOException {
         RecordService svc = new RecordService(store);
-        Respond.json(ex, 200, svc.metaCategories());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("categories", svc.metaCategories());
+        Respond.json(ex, 200, body);
     }
 
     /** GET /api/meta/tags?type=... */

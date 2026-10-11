@@ -2,6 +2,7 @@ package com.pouch.service;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.pouch.GsonUtil;
 import com.pouch.HttpError;
@@ -20,22 +21,28 @@ public class RecordService {
     public RecordService(JsonStore store) { this.store = store; }
 
     // ---------- 校验（02 §2.2） ----------
+
+    /** key 是否出现在请求体中。与 Requests.has 的区别：显式传 null 也算出现（清空语义，03 §3.0.4）。 */
+    static boolean present(JsonObject body, String key) { return body != null && body.has(key); }
+
     static JsonObject validate(Category c, JsonObject body, boolean isPatch) {
         JsonObject out = new JsonObject();
-        if (!isPatch || Requests.has(body, "title")) {
+        if (!isPatch || present(body, "title")) {
             String t = Requests.str(body, "title");
             if (t == null) throw new HttpError(400, "invalid_title", "title 为必填项");
             t = t.trim();
             if (t.isEmpty() || t.length() > 120) throw new HttpError(400, "invalid_title", "title 长度需 1~120");
             out.addProperty("title", t);
         }
-        if (!isPatch || Requests.has(body, "content")) {
+        if (!isPatch || present(body, "content")) {
             String s = Requests.str(body, "content");
             if (s != null && s.length() > 100_000) throw new HttpError(400, "invalid_content", "content 超过 100000 字符");
-            out.addProperty("content", s == null ? "" : s);
+            if (s != null) out.addProperty("content", s);
+            else if (isPatch) out.add("content", JsonNull.INSTANCE);   // 显式 null = 清空（03 §3.0.4）
+            else out.addProperty("content", "");
         }
-        if (!isPatch || Requests.has(body, "tags")) {
-            List<String> raw = (body == null || !body.has("tags")) ? new ArrayList<>() : GsonUtil.strList(body.get("tags"), "tags");
+        if (!isPatch || present(body, "tags")) {
+            List<String> raw = (body == null || !present(body, "tags")) ? new ArrayList<>() : GsonUtil.strList(body.get("tags"), "tags");
             if (raw.size() > 20) throw new HttpError(400, "invalid_tags", "tags 最多 20 个");
             Set<String> uniq = new TreeSet<>();
             for (String t : raw) {
@@ -53,37 +60,47 @@ public class RecordService {
             if (s == null || !c.allowedStatuses().contains(s)) throw new HttpError(400, "invalid_status", "status 非法");
             out.addProperty("status", s);
         }
-        if (Requests.has(body, "pinned")) out.addProperty("pinned", Requests.bool(body, "pinned", false));
+        if (present(body, "pinned")) {
+            JsonElement e = body.get("pinned");
+            if (e.isJsonNull()) out.add("pinned", JsonNull.INSTANCE);
+            else out.addProperty("pinned", Requests.bool(body, "pinned", false));
+        }
 
         if (c == Category.KNOWLEDGE) {
-            if (!isPatch || Requests.has(body, "subject")) {
+            if (!isPatch || present(body, "subject")) {
                 String pv = Requests.presentValue(body, "subject").value();
                 if (!isPatch && pv == null) throw new HttpError(400, "invalid_subject", "碎片知识必须指定 subject");
+                // PATCH 显式 null 忽略：knowledge 的 subject 不可清空
                 if (pv != null) {
                     String[] parts = pv.split("/", -1);
                     if (parts.length < 1 || parts.length > 3) throw new HttpError(400, "invalid_subject", "subject 最多 3 层");
                     for (String p : parts) { p = p.trim(); if (p.isEmpty() || p.length() > 20) throw new HttpError(400, "invalid_subject", "每层 1~20 字符"); }
+                    out.addProperty("subject", pv);
                 }
-                if (pv != null) out.addProperty("subject", pv);
             }
         }
         if (c == Category.KNOWLEDGE || c == Category.QUESTION) {
-            if (Requests.has(body, "source")) {
+            if (present(body, "source")) {
                 String pv = Requests.presentValue(body, "source").value();
                 if (pv != null && pv.length() > 200) throw new HttpError(400, "invalid_source", "source 超过 200 字符");
                 if (pv != null) out.addProperty("source", pv);
+                else out.add("source", JsonNull.INSTANCE);
             }
         }
         if (c == Category.TODO) {
-            if (Requests.has(body, "dueDate")) {
+            if (present(body, "dueDate")) {
                 String pv = Requests.presentValue(body, "dueDate").value();
                 if (pv != null) { try { LocalDate.parse(pv); } catch (DateTimeParseException e) { throw new HttpError(400, "invalid_due_date", "dueDate 需 yyyy-MM-dd"); } }
                 if (pv != null) out.addProperty("dueDate", pv);
+                else out.add("dueDate", JsonNull.INSTANCE);
             }
-            if (Requests.has(body, "priority")) {
+            if (present(body, "priority")) {
                 String s = Requests.str(body, "priority");
-                if (s != null && !Set.of("low", "normal", "high").contains(s)) throw new HttpError(400, "invalid_priority", "priority 非法");
-                if (s != null) out.addProperty("priority", s);
+                if (s == null) out.add("priority", JsonNull.INSTANCE);
+                else {
+                    if (!Set.of("low", "normal", "high").contains(s)) throw new HttpError(400, "invalid_priority", "priority 非法");
+                    out.addProperty("priority", s);
+                }
             }
         }
         return out;
@@ -91,15 +108,18 @@ public class RecordService {
 
     static void applyAll(Record r, JsonObject v) {
         if (v.has("title")) r.setTitle(v.get("title").getAsString());
-        if (v.has("content")) r.setContent(v.get("content").getAsString());
+        if (v.has("content")) r.setContent(strOrEmpty(v.get("content")));
         if (v.has("tags")) r.setTags(GsonUtil.strList(v.get("tags"), "tags"));
         if (v.has("status")) r.setStatus(v.get("status").getAsString());
-        if (v.has("pinned")) r.setPinned(v.get("pinned").getAsBoolean());
+        if (v.has("pinned")) { JsonElement e = v.get("pinned"); r.setPinned(!e.isJsonNull() && e.getAsBoolean()); }
         if (v.has("subject")) r.setSubject(v.get("subject").getAsString());
-        if (v.has("source")) r.setSource(v.get("source").getAsString());
-        if (v.has("dueDate")) r.setDueDate(v.get("dueDate").getAsString());
-        if (v.has("priority")) r.setPriority(v.get("priority").getAsString());
+        if (v.has("source")) r.setSource(strOrNull(v.get("source")));
+        if (v.has("dueDate")) r.setDueDate(strOrNull(v.get("dueDate")));
+        if (v.has("priority")) r.setPriority(strOrNull(v.get("priority")));
     }
+
+    private static String strOrNull(JsonElement e) { return e.isJsonNull() ? null : e.getAsString(); }
+    private static String strOrEmpty(JsonElement e) { return e.isJsonNull() ? "" : e.getAsString(); }
 
     // ---------- CRUD ----------
     public Record create(Category c, JsonObject body) {
@@ -109,8 +129,10 @@ public class RecordService {
         r.setType(c.wire());
         applyAll(r, v);
         r.setStatus(v.has("status") ? v.get("status").getAsString() : c.defaultStatus());
-        if (c == Category.TODO && r.priority() == null) r.setPriority("normal");
         String now = Svc.now();
+        // doneAt：status 为 done 时由服务端写入（01 §1.2.2），新建时即完成也同样记录
+        if (c == Category.TODO && "done".equals(r.status())) r.setDoneAt(now);
+        if (c == Category.TODO && r.priority() == null) r.setPriority("normal");
         r.setCreatedAt(now); r.setUpdatedAt(now);
         try { store.insertRecord(c, r); }
         catch (RuntimeException e) { throw new HttpError(500, "internal_error", "数据写入失败"); }
@@ -120,13 +142,26 @@ public class RecordService {
     public Record update(String id, JsonObject body, Category targetOverride) {
         Record old = findAnyMust(id);
         Category c = Category.fromWire(old.type());
-        JsonObject v = validate(c, body, true);
-        Category target = (targetOverride != null) ? targetOverride : (v.has("type") ? Category.fromWire(v.get("type").getAsString()) : c);
+        Category target = (targetOverride != null) ? targetOverride : c;
+        // 跨类别变更时一律按【目标类别】校验（01 §1.8.1 / 03 §3.3）：
+        // 请求体里目标类别不认识的专有字段按契约忽略、不报错（03 §3.0.4），
+        // 保存时由 clearForeignFields 清掉，不会残留 dueDate/priority。
+        JsonObject v = validate(target, body, true);
+        if (target != c) {
+            // 目标类别必填字段必须齐全：转 knowledge 必须有 subject
+            if (target == Category.KNOWLEDGE) {
+                String subj = v.has("subject") ? v.get("subject").getAsString() : old.subject();
+                if (subj == null || subj.isBlank())
+                    throw new HttpError(400, "invalid_subject", "转为碎片知识必须指定 subject（学科）");
+            }
+            // 源类别状态在目标类别可能非法（如 todo 的 done/cancelled → knowledge）→ 重置为目标类别默认状态
+            String st = v.has("status") ? v.get("status").getAsString() : old.status();
+            if (st == null || !target.allowedStatuses().contains(st)) v.addProperty("status", target.defaultStatus());
+        }
         applyAll(old, v);
         if (target != c) {
             old.setType(target.wire());
-            old.clearForeignFields(target);
-            v.remove("type");
+            old.clearForeignFields(target);   // 必须在 applyAll 之后：清掉源类别专有字段，无残留
         }
         if (c == Category.TODO && target == Category.TODO) {
             String now = Svc.now();
