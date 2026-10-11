@@ -488,7 +488,16 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
       const filters = { q: state.q, tags: state.tags.join(','), status: state.status, subject: state.subject,
         pinned: state.pinned, dueFrom: state.dueFrom, dueTo: state.dueTo, sort: state.sort, order: state.order,
         page: state.page, size: state.size };
-      const res = await API.listRecords(state.type, filters);
+      let res = await API.listRecords(state.type, filters);
+      const total = res.pagination?.total || 0;
+      const totalPages = Math.max(1, Math.ceil(total / state.size));
+      // 删除后从详情页返回、或带着旧页码链接进来：页码越界时回落到新的有效最后一页，
+      // 不停在"现在为空"的空白页（spec 用户故事 33 / docs/05 阶段 3）
+      if (total > 0 && state.page > totalPages) {
+        state.page = totalPages;
+        writeStateToURL();
+        res = await API.listRecords(state.type, { ...filters, page: state.page });
+      }
       currentItems = res.items || [];
       state.total = res.pagination?.total || 0;
       renderList();

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * api.js — 唯一发起 fetch 的模块（用户故事 64 / docs/04 §4.3）
  * 所有页面脚本通过此模块与后端通信，不直接拼 URL、不直接 fetch。
  *
@@ -83,6 +83,10 @@ const API = (function () {
   async function getRecords(params) {
     return request('/api/records' + qs(params));
   }
+  /** 列表页契约：type 单独传，筛选条件在 params（docs/04 §4.7 / docs/03 §3.1）。 */
+  async function listRecords(type, params) {
+    return request('/api/records' + qs({ ...params, type }));
+  }
   async function getRecord(id) {
     return request(`/api/records/${encodeURIComponent(id)}`);
   }
@@ -166,7 +170,7 @@ const API = (function () {
     categories: getCategories,
     tags: getTags,
     subjects: getSubjects,
-    listRecords: getRecords,
+    listRecords,
     statsOverview: getOverview,
     random: getRandom,
     stale: getStale,
