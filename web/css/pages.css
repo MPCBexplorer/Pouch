@@ -1192,6 +1192,58 @@
   .warn-banner { margin: var(--sp-3) var(--sp-4) 0; }
 }
 
+/* ============ 构成环（shared/compose-ring.js，Ticket 07 / 首页 E 区块） ============ */
+
+.compose-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.compose-canvas {
+  max-width: 220px;
+}
+
+.compose-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.compose-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.compose-legend-dot {
+  width: var(--sp-3);
+  height: var(--sp-3);
+  border-radius: var(--r-sm);
+  flex: none;
+}
+
+.compose-legend-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.compose-legend-count {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ============ Index Page (预留) ============ */
 .dashboard-stats {
   /* 阶段 2 实现 */

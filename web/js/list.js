@@ -1,10 +1,10 @@
 /**
  * list.js — 列表页完整交互（Ticket 05）
- * 依赖：API、DOM 工具、主题
+ * 依赖：API（含 LIMITS）、DOM 工具（toast / statusLabel 共享件）、主题
  * 约束：不直接 fetch、不用字符串拼 HTML、只通过 DOM API 构造、错误卡片友好提示
  */
-import { API } from '/js/api.js';
-import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/js/dom.js';
+import { API, LIMITS } from '/js/api.js';
+import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLabel } from '/js/dom.js';
 
   // ============ 页面元素引用 ============
   const els = {
@@ -62,13 +62,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
     els.listBody.classList.toggle('is-loading', loading);
   }
 
-  function statusLabel(cat, status) {
-    if (!cat) return status;
-    if (cat.type === 'inspiration') return status === 'active' ? '活跃' : '已归档';
-    if (cat.type === 'question') return status === 'open' ? '待解决' : '已解决';
-    if (cat.type === 'knowledge') return status === 'learning' ? '学习中' : '已掌握';
-    return status === 'done' ? '已完成' : status === 'cancelled' ? '已取消' : '待办';
-  }
+  // ============ 状态文案 / Toast（共享件，dom.js） ============
 
   function detailUrl(record) {
     const from = encodeURIComponent(location.pathname + location.search);
@@ -503,7 +497,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
       renderList();
     } catch (e) {
       console.error('加载列表失败:', e);
-      if (e.status === 0) {
+      if (e.isNetwork) {
         showError('无法连接到本地服务器。请确认 Pouch 服务已启动（运行 server\\start.ps1）。');
       } else {
         showError(e.message || '加载失败');
@@ -572,15 +566,15 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
 
   function renderModalFields(cat) {
     const fields = [
-      { name: 'title', label: '标题', type: 'text', required: true, maxlength: 120, placeholder: '请输入标题' },
+      { name: 'title', label: '标题', type: 'text', required: true, maxlength: LIMITS.title, placeholder: '请输入标题' },
       { name: 'content', label: '正文', type: 'textarea', rows: 8, placeholder: '支持 Markdown 语法' },
     ];
 
     if (cat.fields.includes('subject')) {
-      fields.push({ name: 'subject', label: '学科', type: 'text', required: true, maxlength: 60, placeholder: '如：数学/线性代数' });
+      fields.push({ name: 'subject', label: '学科', type: 'text', required: true, maxlength: LIMITS.subject, placeholder: '如：数学/线性代数' });
     }
     if (cat.fields.includes('source')) {
-      fields.push({ name: 'source', label: '来源', type: 'text', maxlength: 200, placeholder: '如：书名、链接、课程名' });
+      fields.push({ name: 'source', label: '来源', type: 'text', maxlength: LIMITS.source, placeholder: '如：书名、链接、课程名' });
     }
     if (cat.fields.includes('dueDate')) {
       fields.push({ name: 'dueDate', label: '截止日期', type: 'date' });
@@ -601,7 +595,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
             class: 'input input-textarea',
             rows: f.rows || 4,
             placeholder: f.placeholder || '',
-            maxlength: f.maxlength || 100000,
+            maxlength: f.maxlength || LIMITS.content,
             required: f.required || false
           })
         ]});
@@ -625,7 +619,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
           type: f.type,
           class: 'input',
           placeholder: f.placeholder || '',
-          maxlength: f.maxlength || 524288,
+          maxlength: f.maxlength || LIMITS.title,
           required: f.required || false
         })
       ]});
@@ -667,22 +661,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
     }
   }
 
-  // ============ Toast ============
-  function toast(message, kind = 'error') {
-    let host = document.getElementById('toastHost');
-    if (!host) {
-      host = el('div', { id: 'toastHost', class: 'toast-host', attrs: { role: 'status', 'aria-live': 'polite' } });
-      document.body.append(host);
-    }
-    if (host.children.length >= 3) host.firstElementChild.remove();
-    const t = el('div', { class: ['toast', `toast-${kind}`], text: message });
-    host.append(t);
-    requestAnimationFrame(() => t.classList.add('is-visible'));
-    setTimeout(() => {
-      t.classList.remove('is-visible');
-      setTimeout(() => t.remove(), 250);
-    }, 3000);
-  }
+  // ============ Toast（共享件：dom.js import） ============
 
   // ============ 事件绑定 ============
   els.newRecordForm.addEventListener('submit', handleNewRecord);
@@ -703,7 +682,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, yuan } from '/j
       await reload();
     } catch (e) {
       console.error('初始化失败:', e);
-      showError(e.isNetwork || e.status === 0
+      showError(e.isNetwork
         ? '无法连接到本地服务器。请确认 Pouch 服务已启动（运行 server\\start.ps1）。'
         : '初始化失败，请刷新重试');
     }

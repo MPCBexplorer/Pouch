@@ -6,6 +6,24 @@
  *   - ES module：`import { API } from '/js/api.js';`（list.js / detail.js）
  *   - 全局变量：window.API（经典脚本 / 非模块页面使用）
  */
+/**
+ * 客户端侧边界常量：与后端 RecordService 的校验保持一致（docs/01 §1.9）。
+ * 收敛到此一份（Ticket 07），页面只 import 使用——后端才是强制执行方，
+ * 这里只用于 maxlength 与提交前提示。改边界时同步后端一处。
+ */
+const LIMITS = {
+  title: 120,
+  content: 100_000,
+  note: 5_000,
+  tags: 20,
+  tagName: 24,
+  source: 200,
+  subject: 60,
+  subjectLayers: 3,
+  subjectLayer: 20,
+  wishNote: 200,
+};
+
 const API = (function () {
   'use strict';
 
@@ -184,4 +202,4 @@ if (typeof window !== 'undefined') {
 }
 
 // ES module 导出（list.js / detail.js 走这条）
-export { API };
+export { API, LIMITS };

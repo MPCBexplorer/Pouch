@@ -10,6 +10,11 @@
   function apply(theme) {
     if (theme) document.documentElement.setAttribute('data-theme', theme);
     else document.documentElement.removeAttribute('data-theme');
+    // Chart.js 等把 CSS 变量值固化进 canvas 的组件需要靠这个事件重绘
+    // （docs/04 §4.6：只重绘、不重新请求 API）
+    document.dispatchEvent(new CustomEvent('pouch:themechange', {
+      detail: { theme: theme || effectiveTheme() },
+    }));
   }
 
   function currentMode() {

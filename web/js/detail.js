@@ -10,14 +10,15 @@
  *   - 不直接 fetch（全部走 api.js）、不硬编码枚举（类别/状态/字段全来自 /api/meta/categories）
  *   - 不用字符串拼接 HTML；唯一 DOM 注入入口是 dom.js 的 el({html})，且只喂 DOMPurify 净化后的 Markdown
  */
-import { API } from '/js/api.js';
-import { el, render, frag, excerpt, relTime, fullTime } from '/js/dom.js';
+import { API, LIMITS } from '/js/api.js';
+import { el, render, frag, excerpt, relTime, fullTime, toast, statusLabel } from '/js/dom.js';
 
 // ============ 常量 ============
 
-const MAX_CONTENT = 100_000;   // 与后端一致（docs/01 §1.9）
-const MAX_NOTE = 5_000;
-const MAX_TAGS = 20;
+// 边界常量统一来自 api.js 的 LIMITS（与后端校验一致，docs/01 §1.9；Ticket 07 收敛）
+const MAX_CONTENT = LIMITS.content;
+const MAX_NOTE = LIMITS.note;
+const MAX_TAGS = LIMITS.tags;
 
 /** 状态 → 引导文案。问题只有在"答案被写下来"之后才算真正解决（用户故事 76）。 */
 const STATUS_GUIDES = {
@@ -52,10 +53,7 @@ let inputs = {};          // 编辑态输入框引用
 const catOf = (type) => CATEGORIES.find(c => c.type === type) || null;
 
 /** 状态文案来自元数据，不硬编码（用户故事 62）。 */
-function statusLabel(cat, status) {
-  const found = (cat?.statuses || []).find(s => s.value === status);
-  return found ? found.label : status;
-}
+// ============ 状态文案（共享件：dom.js 从元数据取值） ============
 
 // ============ Markdown 渲染（docs/04 §4.8.2，本项目唯一 XSS 风险点） ============
 
@@ -735,20 +733,6 @@ function showFatal(title, e) {
   ]}));
 }
 
-function toast(message, kind = 'error') {
-  let host = document.getElementById('toastHost');
-  if (!host) {
-    host = el('div', { id: 'toastHost', class: 'toast-host', attrs: { role: 'status', 'aria-live': 'polite' } });
-    document.body.append(host);
-  }
-  if (host.children.length >= 3) host.firstElementChild.remove();
-  const t = el('div', { class: ['toast', `toast-${kind}`], text: message });
-  host.append(t);
-  requestAnimationFrame(() => t.classList.add('is-visible'));
-  setTimeout(() => {
-    t.classList.remove('is-visible');
-    setTimeout(() => t.remove(), 250);
-  }, 3000);
-}
+// ============ Toast（共享件：dom.js import） ============
 
 boot();

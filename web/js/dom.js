@@ -60,17 +60,36 @@ export function debounce(fn, wait = 250) {
 
 // ============ 格式化 ============
 
-/** 金额：分 → 元字符串，千分位，两位小数。见 01 §1.5.2。 */
-export function yuan(cents) {
-  const n = Number(cents || 0) / 100;
-  return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/**
+ * 状态文案：一律取自 /api/meta/categories 的 statuses（用户故事 62），
+ * 不硬编码——服务端改枚举/文案，前端自动跟随。未知状态原样返回。
+ * @param {object} cat - 元数据里的类别对象（含 statuses: [{value,label}]）
+ * @param {string} status - 状态值
+ */
+export function statusLabel(cat, status) {
+  if (!cat || !Array.isArray(cat.statuses)) return status;
+  const found = cat.statuses.find(s => s.value === status);
+  return found ? found.label : status;
 }
 
-/** 元 → 分。用 Math.round 规避 19.99*100=1998.9999… */
-export function toCents(yuanStr) {
-  const n = parseFloat(String(yuanStr).replace(/[,，\s]/g, ''));
-  if (!Number.isFinite(n) || n < 0) return null;
-  return Math.round(n * 100);
+/**
+ * 轻提示（toast）。三封顶、3s 自动消失。
+ * 原先 list.js / detail.js 各有一份逐字相同的实现，收敛到此（Ticket 07）。
+ */
+export function toast(message, kind = 'error') {
+  let host = document.getElementById('toastHost');
+  if (!host) {
+    host = el('div', { id: 'toastHost', class: 'toast-host', attrs: { role: 'status', 'aria-live': 'polite' } });
+    document.body.append(host);
+  }
+  if (host.children.length >= 3) host.firstElementChild.remove();
+  const t = el('div', { class: ['toast', `toast-${kind}`], text: message });
+  host.append(t);
+  requestAnimationFrame(() => t.classList.add('is-visible'));
+  setTimeout(() => {
+    t.classList.remove('is-visible');
+    setTimeout(() => t.remove(), 250);
+  }, 3000);
 }
 
 /**

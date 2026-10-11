@@ -1,9 +1,10 @@
 /**
  * wishlist.js — 心愿单页完整交互（Ticket 04）
- * 依赖：Currency（全局 Currency.formatCents）、API（ES module 导入）
+ * 依赖：API、shared/currency.js（ES module 导入）
  * 约束：不直接 fetch、不用字符串拼 HTML、只通过 DOM API 构造、错误卡片友好提示
  */
 import { API } from '/js/api.js';
+import { formatCents, parseYuan } from '/js/shared/currency.js';
 (async function () {
   'use strict';
 
@@ -71,9 +72,9 @@ import { API } from '/js/api.js';
   // ---- 渲染 ----
 
   function renderSummary(summary) {
-    els.totalWish.textContent = Currency.formatCents(summary.totalWishCents);
-    els.spent.textContent = Currency.formatCents(summary.spentCents);
-    els.remaining.textContent = Currency.formatCents(summary.remainingCents);
+    els.totalWish.textContent = formatCents(summary.totalWishCents);
+    els.spent.textContent = formatCents(summary.spentCents);
+    els.remaining.textContent = formatCents(summary.remainingCents);
 
     if (summary.totalWishCents > 0) {
       els.progressWrap.hidden = false;
@@ -102,7 +103,7 @@ import { API } from '/js/api.js';
       const nameEl = createElement('span', { class: 'wish-name' }, [item.name]);
       if (item.purchased) nameEl.classList.add('purchased');
 
-      const amountEl = createElement('span', { class: 'wish-amount' }, [Currency.formatCents(item.amountCents)]);
+      const amountEl = createElement('span', { class: 'wish-amount' }, [formatCents(item.amountCents)]);
       if (item.purchased) amountEl.classList.add('purchased');
 
       const noteEl = item.note ? createElement('span', { class: 'wish-note' }, [item.note]) : null;
@@ -271,7 +272,7 @@ import { API } from '/js/api.js';
       els.wishName.focus();
       return;
     }
-    const amountCents = Currency.parseYuan(amountStr);
+    const amountCents = parseYuan(amountStr);
     if (amountCents === null || amountCents <= 0) {
       els.wishAmount.focus();
       showError('请输入有效金额（如 2388 或 19.99）');
