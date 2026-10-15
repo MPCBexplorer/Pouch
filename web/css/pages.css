@@ -76,6 +76,18 @@
   text-align: right;
 }
 
+/* 进度条标签：按数量 / 按金额（两条进度并排时的区分） */
+.progress-label {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  min-width: 3.5em;
+  flex: none;
+}
+
+.progress-wrap + .progress-wrap {
+  margin-top: var(--sp-4);
+}
+
 /* 快速新增表单 */
 .wishlist-quickadd {
   margin-bottom: var(--sp-6);
@@ -225,9 +237,12 @@
   text-overflow: ellipsis;
 }
 
+/* 购买日期：与金额同行、位于操作按钮左侧（曾放在 .wish-meta 第二行） */
 .wish-purchased-at {
   color: var(--success);
   font-weight: var(--fw-medium);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
 }
 
 .wish-actions {
@@ -235,6 +250,24 @@
   align-items: center;
   gap: var(--sp-1);
   margin-left: var(--sp-2);
+}
+
+/* 窄屏：日期进行内后固定元素变多（复选框+金额+日期+三个图标按钮），
+   单行会把名称 flex 挤成 0 宽。名称独占一行，控件行自然折到下一行。 */
+@media (max-width: 600px) {
+  .wish-row {
+    flex-wrap: wrap;
+  }
+
+  .wish-name {
+    order: -1;
+    flex-basis: 100%;
+  }
+
+  .wish-amount {
+    min-width: 0;
+    margin-left: auto;
+  }
 }
 
 .btn-icon {
@@ -808,7 +841,7 @@
   color: var(--text);
 }
 
-.detail-subject {
+.detail-subtitle {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1182,6 +1215,18 @@
 .error-msg { color: var(--text-muted); font-size: var(--fs-sm); margin: 0; }
 .error-hint { color: var(--text-faint); font-size: var(--fs-xs); margin: 0; }
 
+/* ---- 模态框：标签组合框 ---- */
+.modal-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.modal-tag-chips:empty {
+  display: none;
+}
+
 /* ---- 响应式：手机单列 ---- */
 @media (max-width: 768px) {
   .detail-card { padding: var(--sp-4); }
@@ -1386,6 +1431,24 @@
   overflow: hidden;
 }
 
+/* 两条 slim 进度（数量 / 金额）：标签 + 条一行，条间距由 .wish-summary 的 gap 统一控制 */
+.sum-progress-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.sum-progress-item .sum-progress {
+  flex: 1;
+}
+
+.sum-progress-label {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  min-width: 3.5em;
+  flex: none;
+}
+
 .sum-progress-fill {
   height: 100%;
   background: var(--brand);
@@ -1509,31 +1572,38 @@
   gap: var(--sp-4);
 }
 
-.compose-slider {
+/* 层级导航：左侧面包屑，右下角左右箭头 */
+.compose-nav {
   display: flex;
-  gap: var(--sp-1);
-  padding: var(--sp-1);
-  background: var(--bg-subtle);
-  border-radius: var(--r-full);
-  align-self: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
 }
 
-.compose-seg {
-  padding: var(--sp-2) var(--sp-4);
-  border: none;
-  border-radius: var(--r-full);
-  background: transparent;
+.compose-path {
+  font-size: var(--fs-xs);
   color: var(--text-muted);
-  font-size: var(--fs-sm);
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-out);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.compose-seg:hover { color: var(--text); }
-.compose-seg.is-active {
-  background: var(--bg-surface);
-  color: var(--brand);
-  font-weight: var(--fw-medium);
-  box-shadow: var(--sh-xs);
+
+.compose-arrows {
+  display: flex;
+  gap: var(--sp-2);
+  flex: none;
+}
+
+.compose-arrows .btn {
+  min-width: var(--sp-8);
+  padding: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-md);
+  line-height: 1;
+}
+
+.compose-arrows .btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ---- 区块 F：陈旧提醒 ---- */

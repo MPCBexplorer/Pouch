@@ -46,9 +46,9 @@ public class RecordService {
             if (raw.size() > 20) throw new HttpError(400, "invalid_tags", "tags 最多 20 个");
             Set<String> uniq = new TreeSet<>();
             for (String t : raw) {
-                t = t.trim();
-                if (t.isEmpty() || t.length() > 24) throw new HttpError(400, "invalid_tags", "单个 tag 需 1~24 字符");
-                if (t.contains("/")) throw new HttpError(400, "invalid_tags", "tag 不能包含 /");
+                // 层级标签：/ 为父子分隔，最多 3 层、每段 1~24 字符（学科分类取消后由标签承担分层语义）
+                t = normalizeTag(t);
+                if (t == null) throw new HttpError(400, "invalid_tags", "每个标签段需 1~24 字符");
                 uniq.add(t);
             }
             JsonArray arr = new JsonArray();
@@ -66,19 +66,6 @@ public class RecordService {
             else out.addProperty("pinned", Requests.bool(body, "pinned", false));
         }
 
-        if (c == Category.KNOWLEDGE) {
-            if (!isPatch || present(body, "subject")) {
-                String pv = Requests.presentValue(body, "subject").value();
-                if (!isPatch && pv == null) throw new HttpError(400, "invalid_subject", "碎片知识必须指定 subject");
-                // PATCH 显式 null 忽略：knowledge 的 subject 不可清空
-                if (pv != null) {
-                    String[] parts = pv.split("/", -1);
-                    if (parts.length < 1 || parts.length > 3) throw new HttpError(400, "invalid_subject", "subject 最多 3 层");
-                    for (String p : parts) { p = p.trim(); if (p.isEmpty() || p.length() > 20) throw new HttpError(400, "invalid_subject", "每层 1~20 字符"); }
-                    out.addProperty("subject", pv);
-                }
-            }
-        }
         if (c == Category.KNOWLEDGE || c == Category.QUESTION) {
             if (present(body, "source")) {
                 String pv = Requests.presentValue(body, "source").value();
@@ -112,7 +99,6 @@ public class RecordService {
         if (v.has("tags")) r.setTags(GsonUtil.strList(v.get("tags"), "tags"));
         if (v.has("status")) r.setStatus(v.get("status").getAsString());
         if (v.has("pinned")) { JsonElement e = v.get("pinned"); r.setPinned(!e.isJsonNull() && e.getAsBoolean()); }
-        if (v.has("subject")) r.setSubject(v.get("subject").getAsString());
         if (v.has("source")) r.setSource(strOrNull(v.get("source")));
         if (v.has("dueDate")) r.setDueDate(strOrNull(v.get("dueDate")));
         if (v.has("priority")) r.setPriority(strOrNull(v.get("priority")));
@@ -148,12 +134,6 @@ public class RecordService {
         // 保存时由 clearForeignFields 清掉，不会残留 dueDate/priority。
         JsonObject v = validate(target, body, true);
         if (target != c) {
-            // 目标类别必填字段必须齐全：转 knowledge 必须有 subject
-            if (target == Category.KNOWLEDGE) {
-                String subj = v.has("subject") ? v.get("subject").getAsString() : old.subject();
-                if (subj == null || subj.isBlank())
-                    throw new HttpError(400, "invalid_subject", "转为碎片知识必须指定 subject（学科）");
-            }
             // 源类别状态在目标类别可能非法（如 todo 的 done/cancelled → knowledge）→ 重置为目标类别默认状态
             String st = v.has("status") ? v.get("status").getAsString() : old.status();
             if (st == null || !target.allowedStatuses().contains(st)) v.addProperty("status", target.defaultStatus());
@@ -229,7 +209,8 @@ public class RecordService {
 
     // ---------- 查询 ----------
     public static final class Filter {
-        public String q, tag, status, subject;
+        public String q, status;
+        public List<String> tags;   // 多选，OR 语义；每项支持层级前缀（见 tagMatches）
         public Boolean pinned;
         public LocalDate dueFrom, dueTo;
         public String sort = "updatedAt", order = "desc";
@@ -251,15 +232,14 @@ public class RecordService {
                 if (!(r.title() != null && r.title().toLowerCase().contains(ql))
                     && !(r.content() != null && r.content().toLowerCase().contains(ql))) continue;
             }
-            if (f.tag != null && !r.tags().contains(f.tag)) continue;
+            // tags 多选为 AND 语义（docs/03 §3.3：逗号分隔、须全部命中）；
+            // 每一项按层级前缀匹配（选父标签命中整棵子树）
+            if (f.tags != null && !f.tags.isEmpty()
+                    && !f.tags.stream().allMatch(t -> tagMatches(r.tags(), t))) continue;
             if (f.status != null) {
                 boolean hit = false;
                 for (String s : f.status.split(",")) { s = s.trim(); if (s.equals(r.status())) { hit = true; break; } }
                 if (!hit) continue;
-            }
-            if (f.subject != null && c == Category.KNOWLEDGE) {
-                String subj = r.subject() == null ? "" : r.subject();
-                if (!subj.equals(f.subject) && !subj.startsWith(f.subject + "/")) continue;
             }
             if (f.pinned != null && r.pinned() != f.pinned) continue;
             if (c == Category.TODO && (f.dueFrom != null || f.dueTo != null)) {
@@ -357,7 +337,7 @@ public class RecordService {
             one.put("defaultStatus", c.defaultStatus());
             one.put("statusActionLabel", actionLabel);
             one.put("fields", switch (c) {
-                case KNOWLEDGE -> List.of("subject", "source");
+                case KNOWLEDGE -> List.of("source");
                 case QUESTION  -> List.of("source");
                 case TODO      -> List.of("dueDate", "priority");
                 default        -> List.of();
@@ -376,25 +356,79 @@ public class RecordService {
         return switch (s) { case "done" -> "已完成"; case "cancelled" -> "已取消"; default -> "待办"; };
     }
 
-    public Map<String, Object> metaTags(Category c) {
-        Map<String, Integer> counts = new TreeMap<>();
-        if (c == null) {
-            for (Category cat : Category.values())
-                for (Record r : store.snapshot(cat)) for (String t : r.tags()) counts.merge(t, 1, Integer::sum);
-        } else {
-            for (Record r : store.snapshot(c)) for (String t : r.tags()) counts.merge(t, 1, Integer::sum);
+    /** 标签层级分隔符：/ 表示父子（2026-10-15 起支持；学科分类取消后，分层语义由标签承担）。 */
+    public static final String TAG_SEP = "/";
+
+    /**
+     * 规范化一个层级标签：去各段首尾空白、丢弃空段；非法（空段 / 超长 / 超深）返回 null。
+     * 规则与学科一致：最多 3 层，每段 1~24 字符。
+     */
+    static String normalizeTag(String raw) {
+        if (raw == null) return null;
+        String[] parts = raw.split("/", -1);
+        if (parts.length > 3) return null;
+        StringBuilder sb = new StringBuilder();
+        for (String p : parts) {
+            p = p.trim();
+            if (p.isEmpty() || p.length() > 24) return null;
+            if (sb.length() > 0) sb.append(TAG_SEP);
+            sb.append(p);
         }
+        return sb.length() == 0 ? null : sb.toString();
+    }
+
+    /** 记录的标签是否命中筛选值：等于该值，或落在其子树下（父/子、父/子/孙，docs/01 §1.8 前缀语义）。 */
+    static boolean tagMatches(List<String> tags, String want) {
+        if (want == null || want.isEmpty()) return true;
+        String prefix = want + TAG_SEP;
+        for (String t : tags) {
+            if (t.equals(want) || t.startsWith(prefix)) return true;
+        }
+        return false;
+    }
+
+    public Map<String, Object> metaTags(Category c) {
+        // 树形聚合（标签可多选，须按记录去重；中间层节点由本方法合成）：
+        //   nodeCount(p) = 至少含一个 p 或其子树标签的记录数 —— 即下拉框计数，与"选父标签"的筛选结果严格一致
+        //   exactCount(p) = 精确含 p 这个完整路径的记录数
+        Map<String, Integer> nodeCount = new HashMap<>();
+        Map<String, Integer> exactCount = new HashMap<>();
+        Iterable<Category> cats = (c == null ? java.util.Arrays.asList(Category.values()) : java.util.List.of(c));
+        for (Category cat : cats) {
+            for (Record r : store.snapshot(cat)) {
+                Set<String> nodes = new HashSet<>();
+                for (String t : r.tags()) {
+                    if (t == null || t.isBlank()) continue;
+                    exactCount.merge(t, 1, Integer::sum);
+                    nodes.add(t);
+                    String[] parts = t.split("/", -1);
+                    for (int i = 1; i < parts.length; i++) nodes.add(String.join("/", java.util.Arrays.copyOf(parts, i)));
+                }
+                for (String n : nodes) nodeCount.merge(n, 1, Integer::sum);
+            }
+        }
+        List<String> paths = new ArrayList<>(nodeCount.keySet());
+        // depth-first 排序：逐段比较，短的在前——下拉框里子节点紧跟父节点
+        paths.sort((a, b) -> {
+            String[] pa = a.split("/"), pb = b.split("/");
+            int n = Math.min(pa.length, pb.length);
+            for (int i = 0; i < n; i++) {
+                int cc = pa[i].compareTo(pb[i]);
+                if (cc != 0) return cc;
+            }
+            return Integer.compare(pa.length, pb.length);
+        });
         List<Map<String, Object>> tags = new ArrayList<>();
-        for (Map.Entry<String, Integer> e : counts.entrySet()) {
+        for (String p : paths) {
+            String[] parts = p.split("/", -1);
             Map<String, Object> one = new LinkedHashMap<>();
-            one.put("tag", e.getKey());
-            one.put("count", e.getValue());
+            one.put("tag", p);
+            one.put("name", parts[parts.length - 1]);
+            one.put("depth", parts.length - 1);
+            one.put("count", nodeCount.get(p));          // 子树计数（筛选结果一致）
+            one.put("ownCount", exactCount.getOrDefault(p, 0));
             tags.add(one);
         }
-        tags.sort((a, b) -> {
-            int cmp = Integer.compare((Integer) b.get("count"), (Integer) a.get("count"));
-            return cmp != 0 ? cmp : ((String) a.get("tag")).compareTo((String) b.get("tag"));
-        });
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("tags", tags);
         out.put("total", tags.size());
@@ -402,52 +436,4 @@ public class RecordService {
         return out;
     }
 
-    public Map<String, Object> metaSubjects() {
-        Map<String, int[]> ownCount = new HashMap<>();
-        for (Record r : store.snapshot(Category.KNOWLEDGE)) {
-            if (r.subject() == null || r.subject().isBlank()) continue;
-            ownCount.merge(r.subject(), new int[]{1}, (a, b) -> { a[0] += b[0]; return a; });
-        }
-        List<String> paths = new ArrayList<>(ownCount.keySet());
-        // depth-first: compare segment by segment
-        paths.sort((a, b) -> {
-            String[] pa = a.split("/"), pb = b.split("/");
-            int n = Math.min(pa.length, pb.length);
-            for (int i = 0; i < n; i++) {
-                int c = pa[i].compareTo(pb[i]);
-                if (c != 0) return c;
-            }
-            return Integer.compare(pa.length, pb.length);
-        });
-        // subtree counts: process from deepest to shallowest, add ownCount to each ancestor
-        Map<String, Integer> subtree = new HashMap<>();
-        for (String p : paths) subtree.put(p, ownCount.get(p)[0]);
-        // sort descending by depth to propagate child counts upward
-        List<String> byDepth = new ArrayList<>(paths);
-        byDepth.sort((a, b) -> Integer.compare(b.split("/").length, a.split("/").length));
-        for (String p : byDepth) {
-            String[] parts = p.split("/");
-            for (int i = parts.length - 1; i > 0; i--) {
-                String parent = String.join("/", Arrays.copyOf(parts, i));
-                if (ownCount.containsKey(parent)) {
-                    subtree.put(parent, subtree.get(parent) + ownCount.get(p)[0]);
-                }
-            }
-        }
-        List<Map<String, Object>> flat = new ArrayList<>();
-        for (String p : paths) {
-            Map<String, Object> one = new LinkedHashMap<>();
-            String[] parts = p.split("/");
-            one.put("path", p);
-            one.put("name", parts[parts.length - 1]);
-            one.put("depth", parts.length - 1);
-            one.put("ownCount", ownCount.get(p)[0]);
-            one.put("count", subtree.get(p));
-            flat.add(one);
-        }
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("subjects", flat);
-        out.put("total", flat.size());
-        return out;
-    }
 }

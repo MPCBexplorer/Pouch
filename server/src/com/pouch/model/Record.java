@@ -21,7 +21,6 @@ public class Record {
     private boolean pinned = false;
 
     // ---- 类别专有字段 ----
-    private String subject;    // knowledge（必填）
     private String source;     // knowledge / question
     private String dueDate;    // todo
     private String priority;   // todo
@@ -40,7 +39,6 @@ public class Record {
     public String createdAt() { return createdAt; }
     public String updatedAt() { return updatedAt; }
     public boolean pinned()   { return pinned; }
-    public String subject()   { return subject; }
     public String source()    { return source; }
     public String dueDate()   { return dueDate; }
     public String priority()  { return priority; }
@@ -57,7 +55,6 @@ public class Record {
     public void setCreatedAt(String v) { createdAt = v; }
     public void setUpdatedAt(String v) { updatedAt = v; }
     public void setPinned(boolean v)   { pinned = v; }
-    public void setSubject(String v)   { subject = v; }
     public void setSource(String v)    { source = v; }
     public void setDueDate(String v)   { dueDate = v; }
     public void setPriority(String v)  { priority = v; }
@@ -65,7 +62,6 @@ public class Record {
 
     /** 清除不属于目标类别的专有字段。变更类别时（01 §1.8.1）调用。 */
     public void clearForeignFields(Category target) {
-        if (target != Category.KNOWLEDGE)                    subject = null;
         if (target != Category.KNOWLEDGE && target != Category.QUESTION) source = null;
         if (target != Category.TODO) { dueDate = null; priority = null; doneAt = null; }
     }

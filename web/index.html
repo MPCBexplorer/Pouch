@@ -60,14 +60,17 @@
         <div class="recall-body" id="recallBody" role="tabpanel" aria-live="polite"></div>
       </section>
 
-      <!-- 区块 E：碎片知识构成环（按学科 / 按标签） -->
+      <!-- 区块 E：碎片知识构成环（只按标签；←/→ 沿标签层级调整粒度） -->
       <section class="card compose-ring" id="composeCard" aria-label="碎片知识构成">
         <h2 class="card-title">碎片知识构成</h2>
-        <div class="compose-slider" role="group" aria-label="构成维度">
-          <button type="button" class="compose-seg is-active" data-dimension="subject" aria-pressed="true">按学科</button>
-          <button type="button" class="compose-seg" data-dimension="tag" aria-pressed="false">按标签</button>
-        </div>
         <div class="compose-wrap" id="composeRing"></div>
+        <div class="compose-nav">
+          <span class="compose-path" id="composePath">全部标签</span>
+          <div class="compose-arrows">
+            <button type="button" class="btn btn-ghost" id="ringUp" aria-label="上一级：更概览的标签" disabled>←</button>
+            <button type="button" class="btn btn-ghost" id="ringDown" aria-label="下一级：更详细的标签" disabled>→</button>
+          </div>
+        </div>
       </section>
 
       <!-- 区块 F：陈旧提醒 -->

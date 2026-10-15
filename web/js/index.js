@@ -13,7 +13,7 @@ import { API } from '/js/api.js';
 import { el, render, frag, excerpt, relTime, fullTime, toast, statusLabel,
          renderWarnings, errorCard } from '/js/dom.js';
 import { formatCents } from '/js/shared/currency.js';
-import { renderComposeRing } from '/js/shared/compose-ring.js';
+import { renderComposeRing, buildTagLevel } from '/js/shared/compose-ring.js';
 
 // ============ 状态 ============
 
@@ -40,6 +40,9 @@ const els = {
   wishSummary: document.getElementById('wishSummary'),
   recallBody: document.getElementById('recallBody'),
   composeRing: document.getElementById('composeRing'),
+  composePath: document.getElementById('composePath'),
+  ringUp: document.getElementById('ringUp'),
+  ringDown: document.getElementById('ringDown'),
   staleBody: document.getElementById('staleBody'),
   warnBanner: document.getElementById('warnBanner'),
 };
@@ -48,7 +51,7 @@ const els = {
 
 async function boot() {
   bindRecallTabs();
-  bindComposeSlider();
+  bindComposeNav();
   bindThemeRedraw();
 
   // 六路并发，不串行等待（验收：完整加载 <800ms）
@@ -60,7 +63,7 @@ async function boot() {
     loadRandom('knowledge'),
     loadHealth(),
     loadStale(),
-    loadCompose('subject'),
+    loadCompose(),
   ]);
 }
 
@@ -204,21 +207,33 @@ async function loadWishSummary() {
 
 function renderWishSummary(s) {
   if (!s) { render(els.wishSummary, el('p', { class: 'empty-hint', text: '心愿单数据不可用' })); return; }
-  const pct = s.totalWishCents > 0 ? Math.round((s.spentCents / s.totalWishCents) * 100) : 0;
+  // 两条进度：数量 + 金额（与心愿单页同口径；首页保持 slim 样式）
+  const itemCount = s.itemCount || 0;
+  const countPct = itemCount > 0 ? Math.round(((s.purchasedCount || 0) / itemCount) * 100) : 0;
+  const amountPct = s.totalWishCents > 0 ? Math.round((s.spentCents / s.totalWishCents) * 100) : 0;
   render(els.wishSummary, frag([
     el('div', { class: 'sum-row', children: [
       summaryItem('总心愿', s.totalWishCents, 'sum-total'),
-      summaryItem('已花掉', s.spentCents, 'sum-spent'),
+      summaryItem('已花费', s.spentCents, 'sum-spent'),
       summaryItem('还差', s.remainingCents, 'sum-remaining'),
     ]}),
-    el('div', { class: 'sum-progress', attrs: { role: 'progressbar', 'aria-valuenow': String(pct),
-                                                 'aria-valuemin': '0', 'aria-valuemax': '100',
-                                                 'aria-label': '已花占总额比例' },
-      children: [el('div', { class: 'sum-progress-fill', style: { width: pct + '%' } })] }),
+    sumProgressBar('数量', countPct, '已购条目占比'),
+    sumProgressBar('金额', amountPct, '已花占总额比例'),
     el('p', { class: 'sum-note', text: s.purchasedCount > 0
       ? `${s.purchasedCount} / ${s.itemCount} 项已实现`
       : `共 ${s.itemCount} 项` }),
   ]));
+}
+
+/** 首页 slim 进度：小标签 + 条（复用 .sum-progress，数量/金额两条同样式）。 */
+function sumProgressBar(label, pct, ariaLabel) {
+  return el('div', { class: 'sum-progress-item', children: [
+    el('span', { class: 'sum-progress-label', text: label }),
+    el('div', { class: 'sum-progress', attrs: { role: 'progressbar', 'aria-valuenow': String(pct),
+                                             'aria-valuemin': '0', 'aria-valuemax': '100',
+                                             'aria-label': ariaLabel },
+      children: [el('div', { class: 'sum-progress-fill', style: { width: pct + '%' } })] }),
+  ]});
 }
 
 function summaryItem(label, cents, cls) {
@@ -295,9 +310,6 @@ function renderRecall(type) {
   render(box, frag([
     el('a', { class: 'recall-link', href: `/detail.html?id=${r.id}&from=%2F`, children: [
       el('h3', { class: 'recall-title', text: r.title }),
-      type === 'knowledge' && r.subject
-        ? el('span', { class: 'badge badge-subject', text: r.subject })
-        : null,
       el('p', { class: 'recall-excerpt', text: excerpt(r.content, 140) || '（无正文）' }),
       el('div', { class: 'recall-foot', children: [
         ...(r.tags || []).slice(0, 3).map(t => el('span', { class: 'badge badge-tag', text: t })),
@@ -316,41 +328,52 @@ function renderRecall(type) {
   ]));
 }
 
-// ============ 区块 E：构成环（学科/标签滑块，用户故事 18-21） ============
+// ============ 区块 E：构成环（只按标签；←/→ 沿层级调整粒度） ============
 
-const composeData = { subject: null, tag: null };   // 两维度各自缓存
-let composeDimension = 'subject';
+const compose = { tags: null, path: '' };   // 全量标签树缓存；path='' = 一级标签
 
-function bindComposeSlider() {
-  document.querySelectorAll('.compose-seg').forEach(btn => {
-    btn.addEventListener('click', () => switchDimension(btn.dataset.dimension));
-  });
+function bindComposeNav() {
+  els.ringUp?.addEventListener('click', () => navRing(-1));
+  els.ringDown?.addEventListener('click', () => navRing(1));
 }
 
-async function switchDimension(dimension) {
-  if (dimension !== 'subject' && dimension !== 'tag') return;
-  if (dimension === composeDimension) return;
-  composeDimension = dimension;
-  document.querySelectorAll('.compose-seg').forEach(b => {
-    const on = b.dataset.dimension === dimension;
-    b.classList.toggle('is-active', on);
-    b.setAttribute('aria-pressed', on ? 'true' : 'false');
-  });
-  await loadCompose(dimension);
-}
-
-/** 首屏只取 subject；tag 维度在滑块切过去时才请求（用户故事 21）。 */
-async function loadCompose(dimension) {
-  if (composeData[dimension]) { renderComposeRing(els.composeRing, composeData[dimension], { dimension }); return; }
+/** 懒加载全量标签树（一次请求，之后上下钻全是客户端计算）。 */
+async function loadCompose() {
+  if (compose.tags) { renderRing(); return; }
   try {
-    const data = dimension === 'tag' ? await API.getTags('knowledge') : await API.getSubjects();
-    composeData[dimension] = data;
-    renderComposeRing(els.composeRing, data, { dimension });
+    const data = await API.tags('knowledge');
+    compose.tags = (data.tags || []).filter(t => t && t.count > 0);
+    renderRing();
   } catch (e) {
     render(els.composeRing, errorCard('构成数据加载失败', e));
   }
 }
 
+/** 渲染当前层级：面包屑 + 圆环 + 箭头可用性。 */
+function renderRing() {
+  if (!compose.tags) return;
+  const { slices, hasChildren } = buildTagLevel(compose.tags, compose.path);
+  renderComposeRing(els.composeRing, slices);
+  if (els.composePath) els.composePath.textContent = compose.path || '全部标签';
+  if (els.ringUp) els.ringUp.disabled = !compose.path;
+  if (els.ringDown) els.ringDown.disabled = !hasChildren;
+}
+
+/** dir=-1 上一级（更概览）；dir=1 下一级（进入计数最大的子标签，更详细）。 */
+function navRing(dir) {
+  if (!compose.tags) return;
+  if (dir > 0) {
+    const { slices } = buildTagLevel(compose.tags, compose.path);
+    if (!slices.length) return;
+    compose.path = slices[0].full;
+  } else {
+    if (!compose.path) return;
+    const parts = compose.path.split("/");
+    parts.pop();
+    compose.path = parts.join("/");
+  }
+  renderRing();
+}
 // ============ 区块 F：陈旧提醒（用户故事 22-26） ============
 
 async function loadStale() {

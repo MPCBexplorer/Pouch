@@ -67,7 +67,14 @@ public class RecordsHandler implements Handler {
             try { c = Category.fromWire(q.get("type")); }
             catch (IllegalArgumentException e) { throw new HttpError(400, "invalid_type", "type 非法"); }
             RecordService.Filter f = new RecordService.Filter();
-            f.q = q.get("q"); f.tag = q.get("tags"); f.status = q.get("status"); f.subject = q.get("subject");
+            f.q = q.get("q");
+            // tags 为逗号分隔的多选值（每项支持"父/子"层级路径）
+            String tagParam = q.get("tags");
+            if (tagParam != null && !tagParam.isBlank()) {
+                f.tags = java.util.Arrays.stream(tagParam.split(","))
+                        .map(String::trim).filter(s -> !s.isEmpty()).distinct().toList();
+            }
+            f.status = q.get("status");
             if (q.get("pinned") != null) f.pinned = Boolean.parseBoolean(q.get("pinned"));
             f.dueFrom = Requests.parseDateParam(q, "dueFrom", "dueFrom");
             f.dueTo   = Requests.parseDateParam(q, "dueTo", "dueTo");

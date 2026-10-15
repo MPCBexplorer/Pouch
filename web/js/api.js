@@ -18,9 +18,6 @@ const LIMITS = {
   tags: 20,
   tagName: 24,
   source: 200,
-  subject: 60,
-  subjectLayers: 3,
-  subjectLayer: 20,
   wishName: 120,
   wishNote: 500,
 };
@@ -135,9 +132,6 @@ const API = (function () {
   async function getTags(type) {
     return request('/api/meta/tags' + qs({ type }));
   }
-  async function getSubjects() {
-    return request('/api/meta/subjects');
-  }
 
   // Stats
   async function getOverview() {
@@ -178,7 +172,6 @@ const API = (function () {
     // Meta
     getCategories,
     getTags,
-    getSubjects,
     // Stats
     getOverview,
     getRandom,
@@ -188,7 +181,6 @@ const API = (function () {
     // ---- docs/03 §3.10 函数名别名（ES module 页面直接用这些名字）----
     categories: getCategories,
     tags: getTags,
-    subjects: getSubjects,
     listRecords,
     statsOverview: getOverview,
     random: getRandom,

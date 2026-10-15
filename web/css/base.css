@@ -27,11 +27,18 @@ p { margin: 0 0 var(--sp-3); }
 a { color: var(--brand); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+/* [hidden] 必须赢过组件层的 display 规则。
+   作者规则的 display:flex 会覆盖 UA 的 [hidden]{display:none}，导致"JS 已设 hidden
+   但元素仍然可见"（list.js 的筛选 chip × 点了不消失、wishlist 进度条空条仍显示）。
+   HTML5 Boilerplate 同款做法：全局 !important 守卫。 */
+[hidden] { display: none !important; }
+
 /* ---------- 键盘可达性：全局焦点环（用户故事 61，键盘是一等公民） ----------
    :focus:not(:focus-visible) 清除鼠标点击留下的残余焦点环；
    :focus-visible 只在键盘导航时画出高对比度 2px 轮廓。
    outline 不用 border（会改变盒模型布局），因为那是"焦点的视觉标记"，
    独立于元素的边框样式。 */
+
 :focus:not(:focus-visible) { outline: none; }
 :focus-visible {
   outline: var(--ring-w) solid var(--brand);

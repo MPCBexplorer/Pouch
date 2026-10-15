@@ -61,10 +61,4 @@ public class MetaHandler implements Handler {
         RecordService svc = new RecordService(store);
         Respond.json(ex, 200, svc.metaTags(c));
     }
-
-    /** GET /api/meta/subjects */
-    public void handleSubjects(HttpExchange ex) throws IOException {
-        RecordService svc = new RecordService(store);
-        Respond.json(ex, 200, svc.metaSubjects());
-    }
 }

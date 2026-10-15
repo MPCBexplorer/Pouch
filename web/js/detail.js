@@ -144,11 +144,10 @@ function renderHeader() {
       record.pinned ? el('span', { class: 'badge badge-pinned', text: '已置顶' }) : null,
     ]}),
     el('h1', { class: 'detail-title', text: record.title }),
-    record.subject || record.source
-      ? el('p', { class: 'detail-subject', children: [
-          record.subject ? el('span', { class: 'detail-subject-path', text: record.subject }) : null,
-          record.source ? el('span', { class: 'detail-source', text: `来源：${record.source}` }) : null,
-        ].filter(Boolean) })
+    record.source
+      ? el('p', { class: 'detail-subtitle', children: [
+          el('span', { class: 'detail-source', text: `来源：${record.source}` }),
+        ] })
       : null,
     el('p', { class: 'detail-meta', children: [
       el('span', { text: `创建于 ${fullTime(record.createdAt)}` }),
@@ -223,12 +222,6 @@ function renderContent() {
  * 新增字段只需在后端 fields 里加名字并在此加一行。
  */
 const FIELD_EDITORS = {
-  subject: {
-    label: '学科（必填）', aria: '学科', required: true,
-    control: v => el('input', { type: 'text', class: 'input', id: 'edit-subject',
-                                value: v || '', maxLength: 60,
-                                placeholder: '如：数学/线性代数', attrs: { 'aria-label': '学科' } }),
-  },
   source: {
     label: '来源', aria: '来源', required: false,
     control: v => el('input', { type: 'text', class: 'input', id: 'edit-source',
@@ -324,7 +317,6 @@ function isDirty() {
   const eq = (a, b) => (a ?? '') === (b ?? '');
   return draft.title !== record.title
       || draft.content !== record.content
-      || !eq(draft.subject, record.subject)
       || !eq(draft.source, record.source)
       || !eq(draft.dueDate, record.dueDate)
       || !eq(draft.priority, record.priority)
@@ -378,12 +370,7 @@ async function save() {
     toast('已保存', 'ok');
   } catch (e) {
     // ★ 失败不退出编辑态：草稿完整保留在输入框里供重试（docs/04 §4.9.4）
-    if (e?.code === 'invalid_subject') {
-      const req = fieldsOf(draft.type).find(f => FIELD_EDITORS[f]?.required);
-      toast(`${cat.label}必须指定${req ? FIELD_EDITORS[req].label.replace('（必填）', '') : '必填字段'}`);
-      inputs[req]?.focus();
-    }
-    else if (e?.code === 'invalid_due_date') { toast('截止日期格式需 yyyy-MM-dd'); inputs.dueDate?.focus(); }
+    if (e?.code === 'invalid_due_date') { toast('截止日期格式需 yyyy-MM-dd'); inputs.dueDate?.focus(); }
     else toast(e?.message || '保存失败，请重试');
   } finally {
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '保存'; }
@@ -450,23 +437,31 @@ function renderTags() {
 function showTagInput() {
   const host = document.getElementById('tagList');
   if (!host) return;
-  const input = el('input', { class: 'tag-input', placeholder: '输入后回车', maxLength: 24,
+  const input = el('input', { class: 'tag-input', placeholder: '输入后回车；/ 可建子标签', maxLength: 80,
                               attrs: { 'aria-label': '新标签', list: 'tagSuggestions' } });
   const list = el('datalist', { id: 'tagSuggestions' });
 
-  // 候选来自 /api/meta/tags，排除已用标签；补全失败不影响手动输入
+  // 候选来自 /api/meta/tags（完整层级路径），排除已用标签；补全失败不影响手动输入
   const used = new Set(record.tags || []);
   API.getTags().then(({ tags }) => {
     render(list, tags.filter(t => !used.has(t.tag)).slice(0, 50)
-                     .map(t => el('option', { value: t.tag, label: `${t.count} 条记录` })));
+                     .map(t => el('option', { value: t.tag, label: `${t.tag} · ${t.count} 条记录` })));
   }).catch(() => { /* 补全失败不阻塞手动输入 */ });
+
+  /** 归一化：修剪每段空白、去首尾斜杠；非法返回 null（每段 1~24 字符、最多 3 层）。 */
+  const normalizeTagInput = raw => {
+    const v = String(raw).trim().replace(/\s*\/\s*/g, '/').replace(/^\/+|\/+$/g, '');
+    if (!v) return null;
+    const segs = v.split('/');
+    if (segs.length > 3 || segs.some(s => !s || s.length > 24)) return null;
+    return v;
+  };
 
   input.addEventListener('keydown', async e => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const v = input.value.trim();
-      if (!v) return;
-      if (v.includes('/')) { toast('标签不能包含 /（那是学科的层级分隔符）'); return; }
+      const v = normalizeTagInput(input.value);
+      if (!v) { toast('标签每段 1~24 字符、最多 3 层（如 Java/并发）'); return; }
       if (used.has(v)) { toast('标签已存在'); return; }
       if ((record.tags || []).length >= MAX_TAGS) { toast(`标签最多 ${MAX_TAGS} 个`); return; }
       try {
@@ -601,7 +596,6 @@ function renderFooter() {
     ['创建于', fullTime(record.createdAt)],
     ['更新于', `${fullTime(record.updatedAt)}（${relTime(record.updatedAt)}）`],
     ['状态', statusLabel(cat, record.status)],
-    record.subject ? ['学科', record.subject] : null,
     record.source ? ['来源', record.source] : null,
     record.dueDate ? ['截止日期', record.dueDate] : null,
     record.priority ? ['优先级', { low: '低', normal: '普通', high: '高' }[record.priority] || record.priority] : null,

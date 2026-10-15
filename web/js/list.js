@@ -33,7 +33,6 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     q: '',
     tags: [],
     status: '',
-    subject: '',
     dueFrom: '',
     dueTo: '',
     sort: 'updatedAt',
@@ -45,6 +44,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
 
   let isLoading = false;
   let currentItems = [];
+  let modalTags = [];        // 新建模态框里已选标签（input + datalist 组合框，支持 / 建子标签）
 
   // ============ 工具函数 ============
   function showError(message) {
@@ -85,7 +85,6 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     state.q = params.get('q') || '';
     state.tags = params.get('tags') ? params.get('tags').split(',').filter(Boolean) : [];
     state.status = params.get('status') || '';
-    state.subject = params.get('subject') || '';
     state.dueFrom = params.get('dueFrom') || '';
     state.dueTo = params.get('dueTo') || '';
     state.sort = params.get('sort') || 'updatedAt';
@@ -101,7 +100,6 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     if (state.q) params.set('q', state.q);
     if (state.tags.length) params.set('tags', state.tags.join(','));
     if (state.status) params.set('status', state.status);
-    if (state.subject) params.set('subject', state.subject);
     if (state.dueFrom) params.set('dueFrom', state.dueFrom);
     if (state.dueTo) params.set('dueTo', state.dueTo);
     if (state.sort !== 'updatedAt') params.set('sort', state.sort);
@@ -143,45 +141,36 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     });
   }
 
+  /**
+   * 标签筛选：单下拉（与状态/学科一致），选项按 / 分层缩进显示"名 (计数)"；
+   * 计数为子树记录数，与"选父标签"的筛选结果严格一致（docs/01 §1.8 前缀语义）。
+   * 下拉是"挑选器"：选中即加入当前筛选（可累加多项），已选标签以下方 chip 展示并可单独移除。
+   */
   function tagSelect() {
-    return el('div', { class: 'select-wrapper' , children: [
-      el('select', {
-        class: 'select',
-        attrs: { 'aria-label': '按标签筛选', multiple: true },
-        on: {
-          change: e => {
-            state.tags = Array.from(e.target.selectedOptions).map(o => o.value);
-            state.page = 1;
-            reload();
-          }
-        },
-        children: [
-          el('option', { value: '', text: '全部标签', disabled: true, selected: !state.tags.length }),
-        ]
-      })
-    ]});
-  }
-
-  function subjectSelect() {
     const select = el('select', {
       class: 'select',
-      attrs: { 'aria-label': '按学科筛选' },
-      value: state.subject || '',
-      on: { change: e => { state.subject = e.target.value; state.page = 1; reload(); } },
-      children: [el('option', { value: '', text: '全部学科' })]
+      attrs: { 'aria-label': '按标签筛选' },
+      value: '',
+      on: {
+        change: e => {
+          const v = e.target.value;
+          if (!v) return;
+          if (!state.tags.includes(v)) { state.tags.push(v); state.page = 1; reload(); }
+          e.target.value = '';   // 复位为"全部标签"，便于继续追加挑选
+        }
+      },
+      children: [el('option', { value: '', text: '全部标签' })]
     });
 
-    API.subjects().then(({ subjects }) => {
+    API.tags(state.type).then(({ tags }) => {
       render(select, frag([
-        el('option', { value: '', text: '全部学科' }),
-        ...subjects.map(s => el('option', {
-          value: s.path,
-          text: '　'.repeat(s.depth) + s.name + ` (${s.count})`,
-          selected: state.subject === s.path,
+        el('option', { value: '', text: '全部标签' }),
+        ...tags.map(t => el('option', {
+          value: t.tag,
+          text: '　'.repeat(t.depth || 0) + (t.name || t.tag) + ` (${t.count})`,
         })),
       ]));
     }).catch(() => {});
-
     return select;
   }
 
@@ -285,35 +274,19 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     const cat = catOf(state.type);
     const parts = [searchInput(), statusSelect(cat), tagSelect()];
 
-    if (cat.fields.includes('subject')) parts.splice(2, 0, subjectSelect());
     if (cat.fields.includes('dueDate')) parts.push(dueRangeInputs());
 
     parts.push(sortSelect(), orderSelect(), sizeSelect(), pinnedSelect(), newButton());
     render(els.filterBar, frag(parts));
-
-    // 标签下拉异步填充
-    const tagSel = els.filterBar.querySelector('select[multiple]');
-    if (tagSel) {
-      API.tags(state.type).then(({ tags }) => {
-        const used = new Set(state.tags);
-        render(tagSel, frag([
-          el('option', { value: '', text: '全部标签', disabled: true, selected: !state.tags.length }),
-          ...tags.map(t => el('option', {
-            value: t.tag,
-            text: `${t.tag} (${t.count})`,
-            selected: used.has(t.tag)
-          })),
-        ]));
-      }).catch(() => {});
-    }
   }
 
   function renderFilterChips() {
     const chips = [];
     if (state.q) chips.push(makeChip(`搜索: ${state.q}`, () => { state.q = ''; state.page = 1; reload(); }));
-    if (state.tags.length) chips.push(makeChip(`标签: ${state.tags.join(', ')}`, () => { state.tags = []; state.page = 1; reload(); }));
+    for (const t of state.tags) {
+      chips.push(makeChip(`标签: ${t}`, () => { state.tags = state.tags.filter(x => x !== t); state.page = 1; reload(); }));
+    }
     if (state.status) chips.push(makeChip(`状态: ${statusLabel(catOf(state.type), state.status)}`, () => { state.status = ''; state.page = 1; reload(); }));
-    if (state.subject) chips.push(makeChip(`学科: ${state.subject}`, () => { state.subject = ''; state.page = 1; reload(); }));
     if (state.dueFrom || state.dueTo) chips.push(makeChip(`截止: ${state.dueFrom || '…'} ~ ${state.dueTo || '…'}`, () => { state.dueFrom = ''; state.dueTo = ''; state.page = 1; reload(); }));
     if (state.pinned !== null) chips.push(makeChip(`置顶: ${state.pinned ? '是' : '否'}`, () => { state.pinned = null; state.page = 1; reload(); }));
 
@@ -321,6 +294,9 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
       render(els.filterChips, frag([el('div', { class: 'chips-label', text: '当前筛选:' }), ...chips]));
       els.filterChips.hidden = false;
     } else {
+      // 必须清空子节点：只设 hidden 会留下旧 chip 的 DOM（若 CSS 的 display 覆盖了
+      // [hidden]，用户就会看到"点了 × 标签还在"——本 bug 的实际形态）
+      render(els.filterChips, []);
       els.filterChips.hidden = true;
     }
   }
@@ -336,7 +312,6 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     state.q = '';
     state.tags = [];
     state.status = '';
-    state.subject = '';
     state.dueFrom = '';
     state.dueTo = '';
     state.pinned = null;
@@ -372,7 +347,6 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
         r.content ? el('p', { class: 'row-excerpt', text: excerpt(r.content, 150) }) : null,
         el('div', { class: 'row-meta', children: [
           el('span', { class: ['badge', `badge-status-${r.status}`], text: statusLabel(cat, r.status) }),
-          r.subject ? el('span', { class: 'badge badge-subject', text: r.subject }) : null,
           ...r.tags.slice(0, 4).map(t => el('span', { class: 'badge badge-tag', text: t })),
           r.tags.length > 4 ? el('span', { class: 'badge badge-tag', text: `+${r.tags.length - 4}` }) : null,
           r.dueDate ? dueBadge(r) : null,
@@ -456,7 +430,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
 
   function emptyState() {
     const cat = catOf(state.type);
-    const hasFilter = state.q || state.tags.length || state.status || state.subject || state.dueFrom || state.dueTo || state.pinned !== null;
+    const hasFilter = state.q || state.tags.length || state.status || state.dueFrom || state.dueTo || state.pinned !== null;
     return el('div', { class: 'empty', children: [
       el('div', { class: 'empty-icon', text: hasFilter ? '🔍' : '✎', attrs: { 'aria-hidden': 'true' } }),
       el('p', { class: 'empty-title', text: hasFilter ? '没有符合条件的记录' : `还没有${cat.label}` }),
@@ -479,7 +453,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     updateTitle();
 
     try {
-      const filters = { q: state.q, tags: state.tags.join(','), status: state.status, subject: state.subject,
+      const filters = { q: state.q, tags: state.tags.join(','), status: state.status,
         pinned: state.pinned, dueFrom: state.dueFrom, dueTo: state.dueTo, sort: state.sort, order: state.order,
         page: state.page, size: state.size };
       let res = await API.listRecords(state.type, filters);
@@ -547,6 +521,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
   // ============ 新建记录模态框 ============
   function openNewModal() {
     const cat = catOf(state.type);
+    modalTags = [];
     els.modalTitle.textContent = `新建${cat.label}`;
     renderModalFields(cat);
     els.newRecordModal.showModal();
@@ -569,10 +544,6 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
       { name: 'title', label: '标题', type: 'text', required: true, maxlength: LIMITS.title, placeholder: '请输入标题' },
       { name: 'content', label: '正文', type: 'textarea', rows: 8, placeholder: '支持 Markdown 语法' },
     ];
-
-    if (cat.fields.includes('subject')) {
-      fields.push({ name: 'subject', label: '学科', type: 'text', required: true, maxlength: LIMITS.subject, placeholder: '如：数学/线性代数' });
-    }
     if (cat.fields.includes('source')) {
       fields.push({ name: 'source', label: '来源', type: 'text', maxlength: LIMITS.source, placeholder: '如：书名、链接、课程名' });
     }
@@ -584,8 +555,10 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
         { value: 'low', text: '低' }, { value: 'normal', text: '普通' }, { value: 'high', text: '高' }
       ], default: 'normal' });
     }
+    fields.push({ name: 'tags', label: '标签', type: 'tags' });
 
     const children = fields.map(f => {
+      if (f.type === 'tags') return tagsField();
       if (f.type === 'textarea') {
         return el('div', { class: 'form-field' , children: [
           el('label', { attrs: { for: `modal-${f.name}` }, text: f.label }),
@@ -628,6 +601,62 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     render(els.modalBody, frag(children));
   }
 
+  /**
+   * 标签组合框：input 自由输入（回车添加）+ datalist 下拉补全（来自 /api/meta/tags，
+   * 值为完整层级路径）+ 已选 chip（× 移除）。支持 / 创建子标签（如 Java/并发）。
+   */
+  function tagsField() {
+    const chips = el('div', { class: 'modal-tag-chips' });
+    const input = el('input', {
+      class: 'input', id: 'modal-tags-input', type: 'text',
+      placeholder: '输入后回车添加；用 / 可建子标签（如 Java/并发）',
+      attrs: { 'aria-label': '标签', list: 'modalTagSuggestions' },
+    });
+    const list = el('datalist', { id: 'modalTagSuggestions' });
+
+    const renderChips = () => {
+      render(chips, frag(modalTags.map(t => el('span', { class: 'badge badge-tag badge-editable', children: [
+        el('span', { text: t }),
+        el('button', { class: 'badge-x', text: '×', attrs: { 'aria-label': `移除标签 ${t}` },
+                       on: { click: () => { modalTags = modalTags.filter(x => x !== t); renderChips(); } } }),
+      ]}))));
+    };
+
+    // 候选来自已有标签；补全失败不影响手动输入
+    API.tags(state.type).then(({ tags }) => {
+      render(list, tags.filter(t => !modalTags.includes(t.tag)).slice(0, 50)
+                       .map(t => el('option', { value: t.tag, label: `${t.name || t.tag} · ${t.count} 条` })));
+    }).catch(() => {});
+
+    const add = raw => {
+      const v = String(raw).trim().replace(/\s*\/\s*/g, '/').replace(/^\/+|\/+$/g, '');
+      if (!v) return;
+      const segs = v.split('/');
+      if (segs.length > 3 || segs.some(s => !s || s.length > 24)) {
+        toast('标签每段 1~24 字符、最多 3 层（如 Java/并发）');
+        return;
+      }
+      if (modalTags.includes(v)) { toast('标签已存在'); return; }
+      if (modalTags.length >= LIMITS.tags) { toast(`标签最多 ${LIMITS.tags} 个`); return; }
+      modalTags.push(v);
+      renderChips();
+      input.value = '';
+    };
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); add(input.value); }   // 回车=添加，不提交表单
+      if (e.key === 'Escape') input.blur();
+    });
+
+    renderChips();
+    return el('div', { class: 'form-field', children: [
+      el('label', { attrs: { for: 'modal-tags-input' }, text: '标签' }),
+      input,
+      list,
+      chips,
+    ]});
+  }
+
   async function handleNewRecord(e) {
     e.preventDefault();
     if (isLoading) return;
@@ -638,21 +667,23 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
       if (v !== '') data[k] = v;
     }
     if (!data.title) { toast('标题不能为空'); return; }
+    if (modalTags.length) data.tags = [...modalTags];
 
     setLoading(true);
     els.modalSubmit.disabled = true;
     els.modalSubmit.textContent = '创建中…';
     try {
       await API.createRecord(state.type, data);
+      modalTags = [];
       closeNewModal();
       await reload();
       toast('创建成功', 'ok');
     } catch (err) {
       console.error('新建失败:', err);
       if (err.code === 'invalid_title') toast('标题需 1~120 字符');
-      else if (err.code === 'invalid_subject') toast('碎片知识必须指定学科');
       else if (err.code === 'invalid_due_date') toast('截止日期格式需 yyyy-MM-dd');
       else if (err.code === 'invalid_priority') toast('优先级非法');
+      else if (err.code === 'invalid_tags') toast(err.message || '标签不合法：每段 1~24 字符、最多 3 层');
       else toast('创建失败，请重试');
     } finally {
       setLoading(false);

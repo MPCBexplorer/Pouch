@@ -104,7 +104,6 @@ public class PouchServer {
         router.register("GET",    "/api/health",                 meta)
                .register("GET",    "/api/meta/categories",       (ex, pp) -> meta.handleCategories(ex))
                .register("GET",    "/api/meta/tags",             (ex, pp) -> meta.handleTags(ex, Requests.query(ex)))
-               .register("GET",    "/api/meta/subjects",         (ex, pp) -> meta.handleSubjects(ex))
                .register("POST",   "/api/records",               rh)
                .register("GET",    "/api/records",               rh)
                .register("GET",    "/api/records/{id}",          rh)

@@ -178,6 +178,3 @@ export function excerpt(md, maxLen = 120) {
 }
 
 /** 学科路径拆分：'数学/线性代数' → ['数学','线性代数'] */
-export function subjectParts(path) {
-  return path ? String(path).split('/').filter(Boolean) : [];
-}
