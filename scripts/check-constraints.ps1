@@ -52,6 +52,15 @@ Get-ChildItem -Path $cssDir -Filter *.css | ForEach-Object {
 }
 Report ($undef.Count -eq 0) "无未定义 CSS 变量" (($undef | Sort-Object -Unique) -join ', ')
 
+Write-Host "=== 6) 静态资源不得带缓存寿命（server/src 无 max-age）==="
+# 背景：b3f227d 修好了 createElement 的布尔属性 bug（checked:false 曾被 setAttribute
+# 成恒为真的属性），但 StaticHandler 给 /js/* 带了 max-age=3600 而 HTML 是 no-store——
+# 用户修复后一小时内刷新页面，浏览器仍执行旧的 wishlist.js，"修了还复现"。
+# 纪律：静态资源一律 no-store，改完刷新即生效，与 HTML 规则一致。
+$ma = Get-ChildItem -Path (Join-Path $Repo 'server\src') -Filter *.java -Recurse |
+      ForEach-Object { Select-String -Path $_.FullName -Pattern 'max-age' -AllMatches }
+Report ($ma.Count -eq 0) "server/src 无 max-age 缓存头" (($ma | ForEach-Object { $_.Filename + ':' + $_.LineNumber }) -join ', ')
+
 Write-Host ""
 if ($fail -eq 0) { Write-Host "ALL CONSTRAINTS PASS" -ForegroundColor Green; exit 0 }
 Write-Host ("$fail CHECK(S) FAILED") -ForegroundColor Red

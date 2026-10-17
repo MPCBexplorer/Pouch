@@ -1686,6 +1686,110 @@
   color: var(--text-faint);
 }
 
+/* ============ 设置页 ============ */
+
+.settings-section {
+  margin-bottom: var(--sp-6);
+}
+
+.path-with-btn {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.input-path {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-surface);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.intro-markdown h2 {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.intro-markdown blockquote {
+  margin: 0 0 var(--sp-3);
+  padding-left: var(--sp-3);
+  border-left: var(--sp-1) solid var(--brand);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.intro-markdown hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: var(--sp-3) 0;
+}
+
+.intro-markdown ul {
+  margin: 0 0 var(--sp-3);
+  padding-left: var(--sp-5);
+}
+
+.intro-markdown li {
+  margin-bottom: var(--sp-1);
+}
+
+.intro-markdown code {
+  padding: 2px var(--sp-1);
+  background: var(--bg-hover);
+  border-radius: var(--r-sm);
+  font-size: 0.875em;
+}
+
+.intro-badges {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  margin: var(--sp-3) 0;
+}
+
+.intro-badges img {
+  height: var(--sp-6);
+  width: auto;
+  border-radius: var(--r-sm);
+}
+
+.field-hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.confirm-card {
+  padding: var(--sp-4);
+  margin-top: var(--sp-3);
+  background: var(--warning-50);
+  border: 1px solid var(--warning-500);
+  border-radius: var(--r-md);
+  color: var(--text);
+}
+[data-theme="dark"] .confirm-card {
+  background: var(--bg-hover);
+  border-color: var(--warning-500);
+}
+
+.confirm-text {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+
 /* ---- 响应式：手机单列 ---- */
 @media (max-width: 768px) {
   .dashboard-stats {
@@ -1706,5 +1810,12 @@
   }
   .stale-title {
     max-width: 100%;
+  }
+
+  .path-with-btn {
+    flex-direction: column;
+  }
+  .input-path {
+    width: 100%;
   }
 }

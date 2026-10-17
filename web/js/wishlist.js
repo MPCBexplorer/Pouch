@@ -13,9 +13,8 @@ import { formatCents, parseYuan } from '/js/shared/currency.js';
     totalWish: document.getElementById('totalWish'),
     spent: document.getElementById('spent'),
     remaining: document.getElementById('remaining'),
-    progressWrap: document.getElementById('progressWrap'),
-    progressFill: document.getElementById('progressFill'),
-    progressText: document.getElementById('progressText'),
+    progressCountWrap: document.getElementById('progressCountWrap'),
+    progressAmountWrap: document.getElementById('progressAmountWrap'),
     quickAddForm: document.getElementById('quickAddForm'),
     wishName: document.getElementById('wishName'),
     wishAmount: document.getElementById('wishAmount'),
@@ -78,15 +77,25 @@ import { formatCents, parseYuan } from '/js/shared/currency.js';
     els.spent.textContent = formatCents(summary.spentCents);
     els.remaining.textContent = formatCents(summary.remainingCents);
 
-    if (summary.totalWishCents > 0) {
-      els.progressWrap.hidden = false;
-      const pct = Math.round((summary.spentCents / summary.totalWishCents) * 100);
-      els.progressFill.style.width = pct + '%';
-      els.progressFill.setAttribute('aria-valuenow', String(pct));
-      els.progressText.textContent = pct + '%';
-    } else {
-      els.progressWrap.hidden = true;
-    }
+    // 进度一：按数量（已购条目数 / 总条目数）
+    const itemCount = summary.itemCount || 0;
+    const countPct = itemCount > 0
+      ? Math.round(((summary.purchasedCount || 0) / itemCount) * 100) : 0;
+    renderProgress(els.progressCountWrap, countPct, itemCount > 0);
+
+    // 进度二：按金额（已花费 / 总心愿，原有进度条）
+    const amountPct = summary.totalWishCents > 0
+      ? Math.round((summary.spentCents / summary.totalWishCents) * 100) : 0;
+    renderProgress(els.progressAmountWrap, amountPct, summary.totalWishCents > 0);
+  }
+
+  /** 渲染一条进度条：pct 0~100；visible=false 时隐藏整条（分母为 0 不显示空条）。 */
+  function renderProgress(wrap, pct, visible) {
+    wrap.hidden = !visible;
+    wrap.querySelector('.progress-fill').style.width = pct + '%';
+    // role=progressbar 在 .progress-bar 上，aria-valuenow 必须设在它身上
+    wrap.querySelector('.progress-bar').setAttribute('aria-valuenow', String(pct));
+    wrap.querySelector('.progress-text').textContent = pct + '%';
   }
 
   function renderItems(list) {
@@ -151,22 +160,21 @@ import { formatCents, parseYuan } from '/js/shared/currency.js';
         onChange: () => togglePurchased(item, checkbox)
       });
 
-      const checkboxLabel = createElement('label', { class: 'checkbox-label' }, [checkbox, ' 已购']);
+      const checkboxLabel = createElement('label', { class: 'checkbox-label' }, [checkbox]);
 
       actions.append(upBtn, downBtn, delBtn);
 
       const row = createElement('div', { class: 'wish-row' }, [
         checkboxLabel,
         nameEl,
+        purchasedAtEl,
         amountEl,
         actions
       ]);
 
-      if (noteEl || purchasedAtEl) {
-        const meta = createElement('div', { class: 'wish-meta' }, []);
-        if (noteEl) meta.append(noteEl);
-        if (purchasedAtEl) meta.append(purchasedAtEl);
-        li.append(row, meta);
+      // 备注留在第二行；购买日期已在行内（金额左侧）
+      if (noteEl) {
+        li.append(row, createElement('div', { class: 'wish-meta' }, [noteEl]));
       } else {
         li.append(row);
       }

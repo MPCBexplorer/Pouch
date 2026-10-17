@@ -153,6 +153,17 @@ const API = (function () {
     return request('/api/health');
   }
 
+  // Storage
+  async function getStorageInfo() {
+    return request('/api/storage/info');
+  }
+  async function openDataFolder() {
+    return request('/api/storage/open-folder', { method: 'POST' });
+  }
+  async function clearBackups() {
+    return request('/api/storage/clear-backups', { method: 'POST' });
+  }
+
   return {
     // Wishlist
     getWishlist,
@@ -178,6 +189,10 @@ const API = (function () {
     getStale,
     // Health
     getHealth,
+    // Storage
+    getStorageInfo,
+    openDataFolder,
+    clearBackups,
     // ---- docs/03 §3.10 函数名别名（ES module 页面直接用这些名字）----
     categories: getCategories,
     tags: getTags,

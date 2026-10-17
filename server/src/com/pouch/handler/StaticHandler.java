@@ -79,8 +79,11 @@ public class StaticHandler implements Handler {
         String fileName = target.getFileName().toString();
         String ext = fileName.contains(".") ? fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase() : "";
         ex.getResponseHeaders().set("Content-Type", MIME.getOrDefault(ext, "application/octet-stream"));
-        // HTML 不缓存（开发期改完刷新即生效）
-        ex.getResponseHeaders().set("Cache-Control", ext.equals("html") ? "no-store" : "public, max-age=3600");
+        // 所有静态资源一律 no-store（开发期改完刷新即生效）。
+        // 历史坑（b3f227d 事后分析）：曾给非 HTML 资源带一小时缓存寿命，而 HTML 是 no-store。
+        // wishlist.js 的布尔属性 bug 修好后，用户一小时内刷新页面仍在执行浏览器缓存的旧
+        // wishlist.js，症状"修了还复现"。本地单用户应用重取几个文件成本为零，不赌缓存。
+        ex.getResponseHeaders().set("Cache-Control", "no-store");
 
         byte[] bytes = Files.readAllBytes(target);
         if ("HEAD".equalsIgnoreCase(ex.getRequestMethod())) {

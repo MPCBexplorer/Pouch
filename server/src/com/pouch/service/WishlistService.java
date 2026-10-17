@@ -7,6 +7,7 @@ import com.pouch.Requests;
 import com.pouch.model.WishItem;
 import com.pouch.store.JsonStore;
 
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,7 +90,21 @@ public class WishlistService {
         catch (RuntimeException e) { throw new HttpError(500, "internal_error", "数据写入失败"); }
     }
 
-    public List<WishItem> list() { return store.wishesSnapshot(); }
+    /**
+     * 列表顺序=契约本身（03 §3.5）：sortIndex 升序 → createdAt 升序 → id 决胜，稳定全序。
+     *
+     * 曾经的 bug：直接返回 store 快照（文件插入顺序）， ↑/↓ 按契约交换 sortIndex 后
+     * 两次 PATCH 都成功、数据也写对了，但 GET 回来顺序不变——用户看到"移动没实现"。
+     * 修好排序后，前端零改动即恢复（前端逻辑本就按契约实现）。
+     */
+    public List<WishItem> list() {
+        return store.wishesSnapshot().stream()
+                .sorted(Comparator
+                        .comparingInt(WishItem::sortIndex)
+                        .thenComparing(WishItem::createdAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(WishItem::id, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+    }
 
     public Map<String, Long> summary() {
         long total = 0, spent = 0;

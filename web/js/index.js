@@ -363,9 +363,13 @@ function renderRing() {
 function navRing(dir) {
   if (!compose.tags) return;
   if (dir > 0) {
-    const { slices } = buildTagLevel(compose.tags, compose.path);
+    const { slices, hasChildren } = buildTagLevel(compose.tags, compose.path);
     if (!slices.length) return;
-    compose.path = slices[0].full;
+    // slices 按 count 降序，但计数相同时保持插入顺序——
+    // 第一个切片可能是叶子（无子标签），盲目钻进去会卡在空环里。
+    // 改为：优先选有子标签的切片；都没有时才回退到 slices[0]。
+    const pick = hasChildren ? slices.find(s => hasChildrenOf(s.full)) : null;
+    compose.path = (pick || slices[0]).full;
   } else {
     if (!compose.path) return;
     const parts = compose.path.split("/");
@@ -373,6 +377,12 @@ function navRing(dir) {
     compose.path = parts.join("/");
   }
   renderRing();
+}
+
+/** 某个 full 标签路径下是否还有子标签（供 navRing 选可钻取的切片）。 */
+function hasChildrenOf(full) {
+  const prefix = full + '/';
+  return compose.tags.some(t => t && t.tag && t.tag.startsWith(prefix));
 }
 // ============ 区块 F：陈旧提醒（用户故事 22-26） ============
 

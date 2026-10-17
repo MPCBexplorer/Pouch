@@ -17,6 +17,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.concurrent.Executors;
 import com.pouch.handler.RecordsHandler;
 import com.pouch.handler.RecordsNoteHandler;
+import com.pouch.handler.StorageHandler;
+import com.pouch.handler.StatsHandler;
 import com.pouch.handler.WishlistHandler;
 import com.pouch.handler.StatsHandler;
 import com.pouch.Requests;
@@ -98,8 +100,9 @@ public class PouchServer {
         MetaHandler           meta = new MetaHandler(store);
         RecordsHandler        rh   = new RecordsHandler(store);
         RecordsNoteHandler    rnh  = new RecordsNoteHandler(store);
+        StorageHandler        sh   = new StorageHandler(store);
         WishlistHandler       wh   = new WishlistHandler(store);
-        StatsHandler          sh   = new StatsHandler(store);
+        StatsHandler          st   = new StatsHandler(store);
 
         router.register("GET",    "/api/health",                 meta)
                .register("GET",    "/api/meta/categories",       (ex, pp) -> meta.handleCategories(ex))
@@ -117,9 +120,11 @@ public class PouchServer {
                .register("GET",    "/api/wishlist/{id}",         wh)
                .register("PATCH",  "/api/wishlist/{id}",         wh)
                .register("DELETE", "/api/wishlist/{id}",         wh)
-               .register("GET",    "/api/stats/overview",        (ex, pp) -> sh.handle(ex, pp))
-               .register("GET",    "/api/stats/random",          (ex, pp) -> sh.handle(ex, pp))
-               .register("GET",    "/api/stats/stale",           (ex, pp) -> sh.handle(ex, pp));
+               .register("GET",    "/api/stats/overview",        (ex, pp) -> st.handle(ex, pp))
+               .register("GET",    "/api/stats/random",          (ex, pp) -> st.handle(ex, pp))
+               .register("GET",    "/api/stats/stale",           (ex, pp) -> st.handle(ex, pp))
+               .register("GET",    "/api/storage/info",          sh)
+               .register("POST",   "/api/storage/{action}",      sh);
 
         // ---- 启动 ----
         HttpServer server;
