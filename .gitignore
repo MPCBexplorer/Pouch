@@ -27,3 +27,6 @@ server/server.pid
 
 # 用户文件
 data/
+
+# build
+dist/

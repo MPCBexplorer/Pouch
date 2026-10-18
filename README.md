@@ -1,10 +1,10 @@
-# Pouch · 奚囊 · 学习看板
+﻿# Pouch · 奚囊 · 学习看板
 
 > 恒从小奚奴，骑距驴，背一古破锦囊，遇有所得，即书投囊中。——《李贺小传》
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 ![完全本地](https://img.shields.io/badge/完全本地-127.0.0.1-success?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.0.0-success?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.1.1+beta-success?style=flat-square)
 
 ---
 
@@ -32,6 +32,9 @@ powershell -ExecutionPolicy Bypass -File server\start.ps1
 ```powershell
 # 仅编译
 powershell -ExecutionPolicy Bypass -File server\build.ps1
+
+# 编译 + 替换版本徽章 + 打包分发包
+powershell -ExecutionPolicy Bypass -File server\build.ps1 -Version 2.0.0
 
 # 后台启动（不占用当前终端）
 powershell -ExecutionPolicy Bypass -File server\run-bg.ps1
@@ -63,9 +66,6 @@ powershell -ExecutionPolicy Bypass -File server\start.ps1 -Data D:\tmp\pouch-tes
 | `wishlist.json` | 心愿单条目（独立模型） |
 
 每个文件带 `version` 与文件级 `updatedAt`。**写前自动备份**：每次写入前在 `data/.backup/` 留一份快照（每文件保留最近约 50 份）。数据文件名只在 `server/src/com/pouch/model/Category.java` 声明，别处不得硬编码。
-
-> 服务启动时全量载入内存，之后以内存为查询源。用外部编辑器改完数据文件**必须重启服务**才生效。
-
 ## 四个页面
 
 | 页面 | 内容 |
@@ -103,3 +103,15 @@ web/               前端（页面 / js / css / vendor）
 data/              5 个 JSON 数据文件 + .backup/ 备份
 scripts/           约束检查脚本
 ```
+
+
+
+
+
+
+
+
+
+
+
+

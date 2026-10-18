@@ -58,7 +58,7 @@ public class StatsHandler implements Handler {
                 if (e.getValue() > 0) nonZero.put(e.getKey(), e.getValue());
             }
             Map<String, Integer> th = new LinkedHashMap<>();
-            th.put("question", 30); th.put("todo", 21); th.put("inspiration", 60);
+            th.put("question", 15); th.put("todo", 10); th.put("inspiration", 30);
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("items", items);
             out.put("byType", nonZero);

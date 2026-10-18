@@ -2,7 +2,7 @@
  * index.js — 首页看板六区块（Ticket 08 / docs/04 §4.6、docs/00 §0.2.1）
  *
  * A 四类别总量卡（点击跳列表） · B 待办完成率环（中心百分比 / 暂无待办）
- * C 心愿单三项汇总 + 进度条（只取 summary，不列条目） · D 随机回顾双 tab（独立已看队列、切 tab 不重抽）
+ * C 心愿单三项汇总 + 进度条（只取 summary，不列条目） · D 随机回顾上下排列（灵感 / 知识点，各自独立已看队列）
  * E 碎片知识构成环（学科/标签滑块、tag 维度懒加载） · F 陈旧提醒 Top N + 阈值分布
  * 顶部告警横幅承接 /api/health.warnings。
  *
@@ -21,14 +21,12 @@ let CATEGORIES = [];                       // /api/meta/categories，不硬编�
 const catOf = type => CATEGORIES.find(c => c.type === type);
 
 const SEEN_LIMIT = 50;                     // 已看队列上限，超过重开一轮（避免 exclude 过长）
-const RECALL_TYPES = ['inspiration', 'knowledge'];
 
-/** 随机回顾：每个 tab 各自维护"本轮已看"与"上次渲染的数据"（切 tab 不重抽，用户故事 15）。 */
+/** 随机回顾：每个类别各自维护"本轮已看"与"上次渲染的数据"（切 tab 不重抽，用户故事 15）。 */
 const recall = {
   inspiration: { seen: [], last: null, exhausted: false },
   knowledge: { seen: [], last: null, exhausted: false },
 };
-let activeRecall = 'inspiration';
 
 let lastOverview = null;                   // 主题切换后只重绘图表、不重新请求（docs/04 §4.6）
 let completionChart = null;
@@ -38,7 +36,6 @@ const els = {
   completionMeta: document.getElementById('completionMeta'),
   completionCanvas: document.getElementById('completionChart'),
   wishSummary: document.getElementById('wishSummary'),
-  recallBody: document.getElementById('recallBody'),
   composeRing: document.getElementById('composeRing'),
   composePath: document.getElementById('composePath'),
   ringUp: document.getElementById('ringUp'),
@@ -50,7 +47,6 @@ const els = {
 // ============ 启动 ============
 
 async function boot() {
-  bindRecallTabs();
   bindComposeNav();
   bindThemeRedraw();
 
@@ -245,25 +241,10 @@ function summaryItem(label, cents, cls) {
 
 // ============ 区块 D：随机回顾（双 tab，用户故事 13-17） ============
 
-function bindRecallTabs() {
-  document.querySelectorAll('.recall-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const type = btn.dataset.type;
-      if (type === activeRecall) return;
-      activeRecall = type;
-      document.querySelectorAll('.recall-tab').forEach(b => {
-        const on = b.dataset.type === type;
-        b.classList.toggle('is-active', on);
-        b.setAttribute('aria-selected', on ? 'true' : 'false');
-      });
-      // 切 tab 不重抽：渲染该 tab 上一次的内容（用户故事 15）
-      renderRecall(type);
-    });
-  });
-}
+// ============ 区块 D：随机回顾（灵感 / 知识点 上下排列，各自独立已看队列） ============
 
 async function loadRandom(type) {
-  const box = els.recallBody;
+  const box = document.getElementById(`recallBody${type.charAt(0).toUpperCase() + type.slice(1)}`);
   const st = recall[type];
   box.classList.add('is-loading');
   try {
@@ -275,9 +256,7 @@ async function loadRandom(type) {
     }
     st.last = data;
     st.exhausted = data.exhausted;
-    // 两个 tab 在 boot 时都会静默预加载，但共用一个展示容器：
-    // 只有当前激活的 tab 才渲染，另一个的数据留待切 tab 时使用（切 tab 不重抽，用户故事 15）
-    if (type === activeRecall) renderRecall(type);
+    renderRecall(type, data);
   } catch (e) {
     render(box, errorCard('随机回顾加载失败', e));
   } finally {
@@ -285,18 +264,11 @@ async function loadRandom(type) {
   }
 }
 
-function renderRecall(type) {
-  const box = els.recallBody;
+function renderRecall(type, data) {
+  const box = document.getElementById(`recallBody${type.charAt(0).toUpperCase() + type.slice(1)}`);
   const st = recall[type];
 
-  if (!st.last) {   // 该 tab 尚未加载过（理论上 boot 已并发加载；防御性占位）
-    render(box, el('p', { class: 'empty-hint', text: '加载中…' }));
-    return;
-  }
-  const data = st.last;
-
-  // 池空：专门引导文案（用户故事 17）
-  if (!data.record) {
+  if (!data || !data.record) {
     const cat = catOf(type);
     render(box, frag([
       el('p', { class: 'empty-hint', text: `还没有${cat ? cat.label : '记录'}，去记一条` }),
@@ -352,34 +324,76 @@ async function loadCompose() {
 /** 渲染当前层级：面包屑 + 圆环 + 箭头可用性。 */
 function renderRing() {
   if (!compose.tags) return;
-  const { slices, hasChildren } = buildTagLevel(compose.tags, compose.path);
-  renderComposeRing(els.composeRing, slices);
-  if (els.composePath) els.composePath.textContent = compose.path || '全部标签';
+  let slices, hasChildren;
+  if (compose.path === '__level1__') {
+    // 显示所有叶子标签（最细粒度，跨父标签）
+    // 一级标签无子标签的显示自己；有一级标签的显示其子标签
+    slices = compose.tags
+      .filter(t => t && t.tag && !compose.tags.some(x => x && x.tag && x.tag.startsWith(t.tag + '/')))
+      .map(t => {
+        const idx = t.tag.indexOf('/');
+        return {
+          label: idx < 0 ? t.tag : t.tag.substring(idx + 1),
+          count: t.count || 0,
+          full: t.tag,
+        };
+      })
+      .sort((a, b) => b.count - a.count);
+    hasChildren = false;
+  } else {
+    ({ slices, hasChildren } = buildTagLevel(compose.tags, compose.path));
+  }
+  renderComposeRing(els.composeRing, slices, handleSliceClick);
+  if (els.composePath) els.composePath.textContent = compose.path === '__level1__' ? '全部二级标签' : (compose.path || '全部标签');
   if (els.ringUp) els.ringUp.disabled = !compose.path;
   if (els.ringDown) els.ringDown.disabled = !hasChildren;
 }
 
-/** dir=-1 上一级（更概览）；dir=1 下一级（进入计数最大的子标签，更详细）。 */
+/** 点击扇环：钻入该标签的子标签。叶子标签（无子标签）点击无反应。 */
+function handleSliceClick(slice) {
+  if (!slice || !slice.full) return;
+  compose.path = slice.full;
+  renderRing();
+}
+
+/** dir=-1 上一级（更概览）；dir=1 下一级（更详细）。
+ * 从根（''）→ 显示所有二级标签（path='__level1__'）。
+ * 从具体标签（'工具'）→ 进入其子标签（'工具/Git'）。
+ * 从 '__level1__' 或叶子标签 → 不动（无更深层级）。
+ * 上一级：路径弹出末尾一段；已在根或 '__level1__' 时回到根。 */
 function navRing(dir) {
   if (!compose.tags) return;
   if (dir > 0) {
-    const { slices, hasChildren } = buildTagLevel(compose.tags, compose.path);
-    if (!slices.length) return;
-    // slices 按 count 降序，但计数相同时保持插入顺序——
-    // 第一个切片可能是叶子（无子标签），盲目钻进去会卡在空环里。
-    // 改为：优先选有子标签的切片；都没有时才回退到 slices[0]。
-    const pick = hasChildren ? slices.find(s => hasChildrenOf(s.full)) : null;
-    compose.path = (pick || slices[0]).full;
+    if (!compose.path) {
+      // 根级：显示所有叶子标签（最细粒度，跨父标签）
+      const leaves = compose.tags.filter(t =>
+        t && t.tag && !compose.tags.some(x => x && x.tag && x.tag.startsWith(t.tag + '/'))
+      );
+      if (!leaves.length) return; // 没有叶子标签，不动
+      compose.path = '__level1__';
+    } else if (compose.path === '__level1__') {
+      // 已在二级标签全景，无更深层级，不动
+      return;
+    } else {
+      // 在具体标签下：进入其子标签
+      const { slices } = buildTagLevel(compose.tags, compose.path);
+      if (!slices.length) return;
+      compose.path = slices[0].full;
+    }
   } else {
-    if (!compose.path) return;
-    const parts = compose.path.split("/");
-    parts.pop();
-    compose.path = parts.join("/");
+    // 上一级：弹出末尾一段；'__level1__' 和根都回到根
+    if (!compose.path || compose.path === '__level1__') {
+      compose.path = '';
+    } else {
+      const parts = compose.path.split("/");
+      parts.pop();
+      compose.path = parts.join("/") || '';
+    }
   }
   renderRing();
 }
 
-/** 某个 full 标签路径下是否还有子标签（供 navRing 选可钻取的切片）。 */
+/** 某个 full 标签路径下是否还有子标签（用于渲染时判断 ringDown 可用性）。 */
 function hasChildrenOf(full) {
   const prefix = full + '/';
   return compose.tags.some(t => t && t.tag && t.tag.startsWith(prefix));

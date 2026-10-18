@@ -1243,11 +1243,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--sp-4);
+  gap: var(--sp-2);
 }
 
 .compose-canvas {
   max-width: 220px;
+  max-height: 160px;
 }
 
 .compose-legend {
@@ -1287,6 +1288,29 @@
 .compose-legend-count {
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
+}
+
+.compose-legend-hidden {
+  display: none;
+}
+
+.compose-legend-toggle {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--sp-2);
+}
+
+.compose-legend-toggle-btn {
+  font-size: var(--fs-xs);
+  color: var(--brand);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.compose-legend-toggle-btn:hover {
+  text-decoration: underline;
 }
 
 /* ============ Index Page（Ticket 08：六区块看板） ============ */
@@ -1474,31 +1498,16 @@
   gap: var(--sp-4);
 }
 
-.recall-tabs {
+.recall-wrap {
   display: flex;
-  gap: var(--sp-1);
-  padding: var(--sp-1);
-  background: var(--bg-subtle);
-  border-radius: var(--r-full);
-  align-self: flex-start;
+  flex-direction: column;
+  gap: var(--sp-3);
 }
 
-.recall-tab {
-  padding: var(--sp-2) var(--sp-4);
-  border: none;
-  border-radius: var(--r-full);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: var(--fs-sm);
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-out);
-}
-.recall-tab:hover { color: var(--text); }
-.recall-tab.is-active {
-  background: var(--bg-surface);
-  color: var(--brand);
-  font-weight: var(--fw-medium);
-  box-shadow: var(--sh-xs);
+.recall-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
 }
 
 .recall-body {

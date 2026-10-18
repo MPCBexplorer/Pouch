@@ -4,6 +4,7 @@ import com.pouch.model.Category;
 import com.pouch.model.Record;
 import com.pouch.store.JsonStore;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -57,30 +58,59 @@ public class StatsService {
         Map<String, Integer> m = new LinkedHashMap<>();
         m.put("question", 0); m.put("todo", 0); m.put("inspiration", 0);
         OffsetDateTime now = OffsetDateTime.now();
+        LocalDate today = now.toLocalDate();
         for (Record r : store.snapshot(Category.QUESTION))
-            if ("open".equals(r.status()) && idleDays(r, now) >= 30) m.merge("question", 1, Integer::sum);
-        for (Record r : store.snapshot(Category.TODO))
-            if ("open".equals(r.status()) && r.dueDate() == null && idleDays(r, now) >= 21) m.merge("todo", 1, Integer::sum);
+            if ("open".equals(r.status()) && idleDays(r, now) >= 15) m.merge("question", 1, Integer::sum);
+        for (Record r : store.snapshot(Category.TODO)) {
+            if ("open".equals(r.status())) {
+                String due = r.dueDate();
+                boolean overdue = false;
+                if (due != null && !due.isEmpty()) {
+                    try {
+                        LocalDate dueDate = LocalDate.parse(due);
+                        if (dueDate.isBefore(today)) overdue = true;
+                    } catch (Exception e) {
+                        // 解析失败忽略
+                    }
+                }
+                if (overdue) m.merge("todo", 1, Integer::sum);
+                else if (idleDays(r, now) >= 10) m.merge("todo", 1, Integer::sum);
+            }
+        }
         for (Record r : store.snapshot(Category.INSPIRATION))
-            if ("active".equals(r.status()) && idleDays(r, now) >= 60) m.merge("inspiration", 1, Integer::sum);
+            if ("active".equals(r.status()) && idleDays(r, now) >= 30) m.merge("inspiration", 1, Integer::sum);
         return m;
     }
 
     public List<Map<String, Object>> staleItems(int limit) {
         final int upper = Math.max(1, Math.min(50, limit));
         OffsetDateTime now = OffsetDateTime.now();
+        LocalDate today = now.toLocalDate();
         List<Map<String, Object>> items = new ArrayList<>();
         for (Record r : store.snapshot(Category.QUESTION)) {
             int d = idleDays(r, now);
-            if ("open".equals(r.status()) && d >= 30 && d > 0) items.add(entry(r, d, "question"));
+            if ("open".equals(r.status()) && d >= 15 && d > 0) items.add(entry(r, d, "question"));
         }
         for (Record r : store.snapshot(Category.TODO)) {
             int d = idleDays(r, now);
-            if ("open".equals(r.status()) && r.dueDate() == null && d >= 21 && d > 0) items.add(entry(r, d, "todo"));
+            if ("open".equals(r.status())) {
+                String due = r.dueDate();
+                boolean overdue = false;
+                if (due != null && !due.isEmpty()) {
+                    try {
+                        LocalDate dueDate = LocalDate.parse(due);
+                        if (dueDate.isBefore(today)) overdue = true;
+                    } catch (Exception e) {
+                        // 解析失败忽略
+                    }
+                }
+                if (overdue) items.add(entry(r, d, "todo"));
+                else if (d >= 10 && d > 0) items.add(entry(r, d, "todo"));
+            }
         }
         for (Record r : store.snapshot(Category.INSPIRATION)) {
             int d = idleDays(r, now);
-            if ("active".equals(r.status()) && d >= 60 && d > 0) items.add(entry(r, d, "inspiration"));
+            if ("active".equals(r.status()) && d >= 30 && d > 0) items.add(entry(r, d, "inspiration"));
         }
         items.sort((a, b) -> Integer.compare((Integer) b.get("idleDays"), (Integer) a.get("idleDays")));
         return items.size() > upper ? new ArrayList<>(items.subList(0, upper)) : items;

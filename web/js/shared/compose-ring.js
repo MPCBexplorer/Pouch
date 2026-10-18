@@ -2,12 +2,12 @@
  * compose-ring.js — 碎片知识构成环（Ticket 08 建立；2026-10-15 随学科分类取消而重构）
  *
  * 契约：
- * - `buildTagLevel(tags, path)`：从 `/api/meta/tags` 的全量树（tag/name/depth/count/ownCount，
- *   中间层节点由后端合成）取出 `path` 下一层的分片。`path=''` 表示一级标签。
- *   返回 `{ slices: [{label, count, full}], hasChildren }`，按计数降序。
- * - `renderComposeRing(host, slices)`：渲染 doughnut + 自绘图例；超过 TOP_N(8) 片时
- *   取计数最高的前 8 个，其余合并为「其他 N 个」，固定中性灰 var(--gray-400)。
- * - 主题联动：监听 theme.js 派发的 `pouch:themechange`，用上次的 slices 重绘
+ * - `buildTagLevel(tags, path)`：从 /api/meta/tags 的全量树（tag/name/depth/count/ownCount，
+ *   中间层节点由后端合成）取出 path 下一层的分片。path='' 表示一级标签。
+ *   返回 { slices, hasChildren }，按计数降序，全部显示（不聚合“其他”）。
+ * - `renderComposeRing(host, slices, onSliceClick)`：渲染 doughnut + 自绘图例。
+ *   支持点击扇环钻取子标签（onSliceClick 接收被点击的 slice）。
+ * - 主题联动：监听 theme.js 派发的 pouch:themechange，用上次的 slices 重绘
  *   （docs/04 §4.6：只重绘、不重新请求）。
  * - 约束：不 import 任何模块（含 api.js）、不直接 fetch；Chart.js 经全局 <script> 提供，
  *   缺失时渲染空态而不是抛错（上线安全）。
@@ -15,11 +15,8 @@
  * consumer 入口：index.js（Ticket 08 首页 E 区块）。学科维度已取消，仅保留按标签。
  */
 
-export const TOP_N = 8;                    // 构成环最多展示的分片数（docs/00 §0.2.1）
-
 const PALETTE_TOKENS = ['--ring-1', '--ring-2', '--ring-3', '--ring-4',
                         '--ring-5', '--ring-6', '--ring-7', '--ring-8'];
-const OTHER_TOKEN = '--gray-400';          // "其他 N 个"固定中性灰
 const THEME_EVENT = 'pouch:themechange';
 
 /**
@@ -53,30 +50,6 @@ export function buildTagLevel(tags, path = '') {
   return { slices, hasChildren };
 }
 
-/**
- * top-N 聚合：计数降序取前 limit 个，其余合并为「其他 N 个」（保留 full 供钻取）。
- * @returns {Array<{label:string,count:number,full:?string,isOther:boolean,index:number}>}
- */
-export function aggregateTopN(slices, limit = TOP_N) {
-  const list = (Array.isArray(slices) ? slices : [])
-    .map(s => ({ label: String(s && s.label != null ? s.label : ''), count: Number(s && s.count) || 0, full: s && s.full != null ? s.full : null }))
-    .filter(s => s.label && s.count > 0);
-  list.sort((a, b) => b.count - a.count);
-  const head = list.slice(0, limit);
-  const rest = list.slice(limit);
-  const out = head.map((s, i) => ({ ...s, isOther: false, index: i }));
-  if (rest.length > 0) {
-    out.push({
-      label: `其他 ${rest.length} 个`,
-      count: rest.reduce((sum, s) => sum + s.count, 0),
-      full: null,
-      isOther: true,
-      index: out.length,
-    });
-  }
-  return out;
-}
-
 /** 读 CSS 变量当前值（Chart.js 创建时即固化，切主题需重绘）。 */
 function tokenValue(name) {
   const css = getComputedStyle(document.documentElement);
@@ -94,6 +67,7 @@ function h(tag, className, text) {
 let chart = null;
 let lastSlices = null;       // 主题切换时重绘用（docs/04 §4.6：不重新请求）
 let lastHost = null;
+let lastOnSliceClick = null;
 let bound = false;
 
 function destroyChart() {
@@ -101,7 +75,7 @@ function destroyChart() {
   chart = null;
 }
 
-function draw(host, slices) {
+function draw(host, slices, onSliceClick) {
   let canvas = host.querySelector('.compose-canvas');
   if (!canvas) { canvas = h('canvas', 'compose-canvas'); host.append(canvas); }
   destroyChart();
@@ -111,7 +85,7 @@ function draw(host, slices) {
       labels: slices.map(s => s.label),
       datasets: [{
         data: slices.map(s => s.count),
-        backgroundColor: slices.map(s => tokenValue(s.isOther ? OTHER_TOKEN : PALETTE_TOKENS[s.index % PALETTE_TOKENS.length])),
+        backgroundColor: slices.map((_, i) => tokenValue(PALETTE_TOKENS[i % PALETTE_TOKENS.length])),
         borderColor: tokenValue('--bg-surface'),
         borderWidth: 3,
         hoverOffset: 6,
@@ -125,51 +99,87 @@ function draw(host, slices) {
         legend: { display: false },   // 用自绘 legend，视觉统一
         tooltip: { callbacks: { label: ctx => ` ${ctx.label}：${ctx.parsed} 项` } },
       },
+      onClick: (event, elements) => {
+        if (!onSliceClick || !elements.length) return;
+        const index = elements[0].index;
+        onSliceClick(slices[index]);
+      },
     },
   });
 }
+
+const LEGEND_SHOW_COUNT = 5;   // 默认只显示前 5 条
 
 function renderLegend(host, slices) {
   const old = host.querySelector('.compose-legend');
   if (old) old.remove();
   const ul = h('ul', 'compose-legend');
-  slices.forEach(s => {
+  slices.forEach((s, i) => {
     const li = h('li', 'compose-legend-item');
+    if (i >= LEGEND_SHOW_COUNT) li.classList.add('compose-legend-hidden');
     const dot = h('span', 'compose-legend-dot');
-    dot.style.background = tokenValue(s.isOther ? OTHER_TOKEN : PALETTE_TOKENS[s.index % PALETTE_TOKENS.length]);
+    dot.style.background = tokenValue(PALETTE_TOKENS[i % PALETTE_TOKENS.length]);
     li.append(dot);
     li.append(h('span', 'compose-legend-label', s.label));
     li.append(h('span', 'compose-legend-count', String(s.count)));
     ul.append(li);
   });
+  // 当条目超过 5 条时，添加展开/收起切换
+  if (slices.length > LEGEND_SHOW_COUNT) {
+    const toggle = h('li', 'compose-legend-toggle');
+    const btn = h('button', 'compose-legend-toggle-btn', '展开更多');
+    btn.type = 'button';
+    let expanded = false;
+    btn.addEventListener('click', () => {
+      expanded = !expanded;
+      const shouldHide = !expanded;
+      ul.querySelectorAll('.compose-legend-item').forEach((li, idx) => {
+        if (idx >= LEGEND_SHOW_COUNT) {
+          li.classList.toggle('compose-legend-hidden', shouldHide);
+        }
+      });
+      btn.textContent = expanded ? '收起' : '展开更多';
+    });
+    toggle.append(btn);
+    ul.append(toggle);
+  }
   host.append(ul);
 }
 
 /**
- * 渲染构成环。
+ * 渲染构成环（全部标签，不聚合）。
  * @param {HTMLElement} host 挂载容器
- * @param {Array<{label:string,count:number}>} slices 当前层级分片（内部做 top-N 聚合）
+ * @param {Array<{label:string,count:number,full:string}>} slices 当前层级分片（全部，不做 top-N 聚合）
+ * @param {Function} [onSliceClick] 点击扇环的回调，接收被点击的 slice
  * @returns {number} 渲染的分片数；空数据返回 0
  */
-export function renderComposeRing(host, slices) {
+export function renderComposeRing(host, slices, onSliceClick) {
   lastHost = host;
   lastSlices = slices;
+  lastOnSliceClick = onSliceClick;
   bindTheme();
 
-  const agg = aggregateTopN(slices);
+  // 全部显示，不聚合“其他 N 个”
+  const agg = slices.map(s => ({
+    label: String(s && s.label != null ? s.label : ''),
+    count: Number(s && s.count) || 0,
+    full: s && s.full != null ? s.full : null,
+  })).filter(s => s.label && s.count > 0)
+    .sort((a, b) => b.count - a.count);
+
   if (!agg.length || typeof Chart !== 'function') {
     destroyChart();
     host.replaceChildren(h('p', 'empty-hint', '还没有带标签的碎片知识。'));
     return 0;
   }
-  draw(host, agg);
+  draw(host, agg, onSliceClick);
   renderLegend(host, agg);
   return agg.length;
 }
 
 /** 主题切换后用上次的分片重绘（只重绘、不重新请求）。 */
 function onThemeChange() {
-  if (lastHost && lastSlices) renderComposeRing(lastHost, lastSlices);
+  if (lastHost && lastSlices) renderComposeRing(lastHost, lastSlices, lastOnSliceClick);
 }
 
 /** 绑定主题监听（幂等：首次渲染时才需要）。 */
