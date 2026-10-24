@@ -16,9 +16,15 @@
 ## 环境要求
 
 - JDK 21
-- Gson jar：已放在 `server/lib/`
-- 三个前端 vendor 文件：`web/vendor/chart.umd.min.js`、`marked.min.js`、`purify.min.js`
-  （本地，运行时不访问 CDN）
+
+## 第三方依赖
+
+Pouch 使用以下开源第三方库，详见 `NOTICE` 文件：
+
+- Gson 2.11.0 — Apache License 2.0（后端 JSON 序列化）
+- Chart.js — MIT License（前端图表）
+- marked — MIT License（前端 Markdown 渲染）
+- DOMPurify — Mozilla Public License 2.0（前端 HTML sanitize）
 
 ## 快速开始
 

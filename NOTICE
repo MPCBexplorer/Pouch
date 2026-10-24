@@ -1,0 +1,16 @@
+Pouch · 奚囊 · 学习看板
+Copyright (c) 2026 Pouch Contributors
+
+This product includes software developed by the following projects:
+
+- Google Gson (https://github.com/google/gson)
+  Licensed under Apache License 2.0
+
+- Chart.js (https://www.chartjs.org/)
+  Licensed under MIT License
+
+- marked (https://marked.js.org/)
+  Licensed under MIT License
+
+- DOMPurify (https://github.com/cure53/DOMPurify)
+  Licensed under Mozilla Public License 2.0

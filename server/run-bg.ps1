@@ -1,3 +1,20 @@
+<#
+.COPYRIGHT
+    Copyright 2026 MPCBexplorer
+
+.LICENSE
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+#>
 # run-bg.ps1 — 后台启动 PouchServer（用于验证）。把 PID 写到 server\server.pid。
 # 用法：powershell -ExecutionPolicy Bypass -File server\run-bg.ps1 [-Data D:\xxx] [-Port 9000]
 param(

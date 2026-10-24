@@ -1,4 +1,21 @@
-﻿# build.ps1 — 编译 server/src 到 server/out，并可选打包分发包。
+<#
+.COPYRIGHT
+    Copyright 2026 MPCBexplorer
+
+.LICENSE
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+#>
+# build.ps1 — 编译 server/src 到 server/out，并可选打包分发包。
 # 用法：
 #   powershell -ExecutionPolicy Bypass -File build.ps1
 #   powershell -ExecutionPolicy Bypass -File build.ps1 -Version 1.2.3
@@ -97,6 +114,13 @@ if ($Version) {
     # 5) README.md → pouch/README.md
     Copy-Item $readme (Join-Path $pkgRoot 'README.md') -Force
     Write-Host "[build] 复制 README.md" -ForegroundColor DarkGray
+
+    # 6) NOTICE → pouch/NOTICE
+    $notice = Join-Path $root 'NOTICE'
+    if (Test-Path $notice) {
+        Copy-Item $notice (Join-Path $pkgRoot 'NOTICE') -Force
+        Write-Host "[build] 复制 NOTICE" -ForegroundColor DarkGray
+    }
 
     # 6) 打包 zip：pouch-<version>.zip
     Add-Type -AssemblyName System.IO.Compression.FileSystem
