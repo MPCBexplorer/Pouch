@@ -122,7 +122,14 @@ if ($Version) {
         Write-Host "[build] 复制 NOTICE" -ForegroundColor DarkGray
     }
 
-    # 6) 打包 zip：pouch-<version>.zip
+    # 7) LICENSE → pouch/LICENSE
+    $license = Join-Path $root 'LICENSE'
+    if (Test-Path $license) {
+        Copy-Item $license (Join-Path $pkgRoot 'LICENSE') -Force
+        Write-Host "[build] 复制 LICENSE" -ForegroundColor DarkGray
+    }
+
+    # 8) 打包 zip：pouch-<version>.zip
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zipName = "pouch-$Version.zip"
     $zipPath = Join-Path $distRoot $zipName
