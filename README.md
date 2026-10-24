@@ -4,7 +4,7 @@
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 ![完全本地](https://img.shields.io/badge/完全本地-127.0.0.1-success?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.1.1+beta-success?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.2.0+beta-success?style=flat-square)
 
 ---
 
@@ -109,15 +109,12 @@ web/               前端（页面 / js / css / vendor）
 data/              5 个 JSON 数据文件 + .backup/ 备份
 scripts/           约束检查脚本
 ```
+## 贡献
 
+阅读 `CONTRIBUTING.md` 以查看如何报告议题, 提交PR, 并遵循编码规范。
 
+---
 
-
-
-
-
-
-
-
+感谢您使用奚囊系统! 🎉
 
 
