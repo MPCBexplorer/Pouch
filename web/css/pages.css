@@ -1843,3 +1843,75 @@
     width: 100%;
   }
 }
+
+/* ============ 页面页脚与 GitHub 链接 ============ */
+.site-footer {
+  margin-top: var(--sp-8);
+  padding: var(--sp-6) var(--sp-4);
+  background: var(--bg-page);
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.footer-content a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: var(--fw-medium);
+}
+
+.footer-content a:hover {
+  color: var(--brand);
+  text-decoration: underline;
+}
+
+.footer-content svg {
+  width: var(--sp-5);
+  height: var(--sp-5);
+  fill: currentColor;
+  flex: none;
+}
+
+/* 顶部右侧 GitHub 链接 */
+.repo-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  color: var(--text);
+  text-decoration: none;
+  border: 1px solid var(--border);
+}
+
+.repo-link:hover {
+  background: var(--bg-hover);
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
+.repo-link svg {
+  width: var(--sp-5);
+  height: var(--sp-5);
+  fill: currentColor;
+}
+
+/* settings.html intro-badges 中的 GitHub 徽标 */
+.intro-badges a {
+  display: inline-block;
+}
+
+@media (max-width: 768px) {
+  .site-footer {
+    flex-direction: column;
+    gap: var(--sp-2);
+    text-align: center;
+  }
+}
