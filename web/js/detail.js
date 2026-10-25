@@ -672,21 +672,16 @@ async function confirmDelete() {
 
 // ============ 返回逻辑（history.back 优先，from 兜底，用户故事 75） ============
 
-/** from 参数是站内相对路径（可带 ? 查询参数），严格白名单，拒绝开放重定向（CWE-601）。 */
+/** from 参数是站内相对路径（可带 ? 查询参数），严格白名单，拒绝开放重定向（CWE-601）和 XSS。 */
 function safeFrom() {
   const raw = new URLSearchParams(location.search).get('from');
   if (!raw) return null;
-  let decoded;
-  try { decoded = decodeURIComponent(raw); } catch { return null; }
-
-  // 白名单：只允许跳转到站内已知页面，彻底杜绝开放重定向
+  let url;
+  try { url = new URL(raw, location.origin); } catch { return null; }
+  if (url.origin !== location.origin) return null;
   const allowed = ['/', '/list.html', '/detail.html', '/wishlist.html', '/index.html', '/settings.html'];
-
-  // 提取路径部分（不含查询参数），用于白名单匹配；返回时保留完整 decoded（含查询参数）
-  const pathOnly = decoded.split('?')[0];
-  if (!allowed.includes(pathOnly)) return null;
-
-  return decoded;
+  if (!allowed.includes(url.pathname)) return null;
+  return url.pathname + url.search + url.hash;
 }
 
 function goBack(force = false) {
