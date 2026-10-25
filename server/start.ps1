@@ -1,4 +1,4 @@
-<#
+﻿<#
 .COPYRIGHT
     Copyright 2026 MPCBexplorer
 
