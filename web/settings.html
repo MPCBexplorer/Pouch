@@ -56,7 +56,7 @@
         <div class="intro-badges">
           <img src="https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white" alt="Java">
           <img src="https://img.shields.io/badge/完全本地-127.0.0.1-success?style=flat-square" alt="完全本地">
-          <img src="https://img.shields.io/badge/Version-1.2.0-success?style=flat-square" alt="Version">
+          <img src="https://img.shields.io/badge/Version-1.2.2-success?style=flat-square" alt="Version">
           <a href="https://github.com/MPCBexplorer/Pouch" target="_blank" rel="noopener noreferrer">
             <img src="https://img.shields.io/badge/GitHub-MPCBexplorer/Pouch-181717?style=social&logo=github" alt="GitHub 仓库">
           </a>
@@ -125,6 +125,25 @@
       </div>
     </section>
 
+    <!-- 版本检查 -->
+    <section class="card settings-section" aria-label="版本检查">
+      <h2 class="card-title">版本信息</h2>
+      <div class="form-field">
+        <div class="update-field-row">
+          <span class="field-label">当前版本</span>
+          <span class="field-value" id="currentVersion">1.2.0</span>
+        </div>
+        <div class="update-field-row">
+          <span class="field-label">最新版本</span>
+          <span class="field-value" id="latestVersion">检查中...</span>
+        </div>
+        <div class="form-field">
+          <button type="button" class="btn btn-primary" id="checkUpdateBtn">检查更新</button>
+        </div>
+        <div id="updateResult" class="update-result" style="margin-top: var(--sp-2);"></div>
+      </div>
+    </section>
+
     <div id="settingsError" class="error-card" hidden></div>
   </main>
 
@@ -141,6 +160,10 @@
   </footer>
 </body>
 </html>
+
+
+
+
 
 
 

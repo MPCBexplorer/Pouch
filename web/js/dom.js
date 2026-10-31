@@ -186,10 +186,28 @@ export function excerpt(md, maxLen = 120) {
     .replace(/^\s{0,3}[-*+]\s+/gm, '')    // 无序列表标记
     .replace(/^\s{0,3}\d+\.\s+/gm, '')    // 有序列表标记
     .replace(/[*_~]{1,3}/g, '')           // 强调标记
-    .replace(/\$\$?[\s\S]*?\$\$?/g, ' ')  // 数学公式（本项目不渲染，去掉避免乱码）
     .replace(/\s+/g, ' ')
     .trim();
   return plain.length > maxLen ? plain.slice(0, maxLen) + '…' : plain;
+}
+
+/** Markdown 只读渲染 + DOMPurify 净化。供首页/详情页等页面使用。 */
+export function renderMarkdown(src) {
+  if (!src || !src.trim()) return '';
+  marked.setOptions({
+    gfm: true,
+    breaks: true,
+    headerIds: false,
+    mangle: false,
+  });
+  const raw = marked.parse(src);
+  return DOMPurify.sanitize(raw, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'del', 'code', 'pre', 'blockquote',
+                   'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                   'a', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'img'],
+    ALLOWED_ATTR: ['href', 'title', 'src', 'alt', 'class'],
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+  });
 }
 
 /** 学科路径拆分：'数学/线性代数' → ['数学','线性代数'] */

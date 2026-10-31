@@ -25,8 +25,8 @@
  * /api/meta/categories；不用字符串拼接 HTML；颜色只引用 design token（图表色经 getComputedStyle 读变量）。
  */
 import { API } from '/js/api.js';
-import { el, render, frag, excerpt, relTime, fullTime, toast, statusLabel,
-         renderWarnings, errorCard } from '/js/dom.js';
+import { el, render, frag, relTime, fullTime, toast, statusLabel,
+         renderWarnings, errorCard, renderMarkdown } from '/js/dom.js';
 import { formatCents } from '/js/shared/currency.js';
 import { renderComposeRing, buildTagLevel } from '/js/shared/compose-ring.js';
 
@@ -57,6 +57,8 @@ const els = {
   ringDown: document.getElementById('ringDown'),
   staleBody: document.getElementById('staleBody'),
   warnBanner: document.getElementById('warnBanner'),
+  updateBanner: document.getElementById('updateBanner'),
+  updateCloseBtn: document.getElementById('updateCloseBtn'),
 };
 
 // ============ 启动 ============
@@ -76,6 +78,9 @@ async function boot() {
     loadStale(),
     loadCompose(),
   ]);
+
+  // 检查版本更新（静默失败，不影响首次加载）
+  checkForUpdate();
 }
 
 async function loadCategories() {
@@ -93,6 +98,30 @@ async function loadHealth() {
     renderWarnings(els.warnBanner, h.warnings || []);
   } catch { /* 健康检查失败不打扰用户，其他区块会各自报错 */ }
 }
+
+/** 检查版本更新（GitHub API，静默失败不影响启动）。 */
+async function checkForUpdate() {
+  try {
+    const info = await API.checkVersion();
+    if (info.update_available) {
+      showUpdateBanner(info.latest, info.downloadUrl);
+    }
+  } catch { /* 网络或 API 失败时静默忽略 */ }
+}
+
+function showUpdateBanner(latestVersion, downloadUrl) {
+  const banner = els.updateBanner;
+  const versionText = document.getElementById('updateVersionText');
+  if (!banner || !versionText) return;
+  versionText.textContent = latestVersion;
+  const btn = document.getElementById('updateGoBtn');
+  if (btn) btn.onclick = () => { window.open(downloadUrl, '_blank'); };
+  banner.classList.remove('hidden');
+}
+
+document.getElementById('updateCloseBtn')?.addEventListener('click', () => {
+  document.getElementById('updateBanner')?.classList.add('hidden');
+});
 
 // ============ 区块 A：总量统计 ============
 
@@ -294,10 +323,13 @@ function renderRecall(type, data) {
 
   const r = data.record;
   const cat = catOf(type);
+  const mdHtml = renderMarkdown(r.content);
   render(box, frag([
     el('a', { class: 'recall-link', href: `/detail.html?id=${r.id}&from=%2F`, children: [
       el('h3', { class: 'recall-title', text: r.title }),
-      el('p', { class: 'recall-excerpt', text: excerpt(r.content, 140) || '（无正文）' }),
+      mdHtml
+        ? el('div', { class: 'recall-excerpt', html: mdHtml })
+        : el('p', { class: 'recall-excerpt empty-hint', text: '（无正文）' }),
       el('div', { class: 'recall-foot', children: [
         ...(r.tags || []).slice(0, 3).map(t => el('span', { class: 'badge badge-tag', text: t })),
         el('span', { class: 'recall-time', text: relTime(r.createdAt),

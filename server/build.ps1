@@ -101,6 +101,15 @@ if ($Version) {
         Set-Content $readmeEn -Value $content -Encoding UTF8
         Write-Host "[build] 已更新 README.en.md 版本徽章" -ForegroundColor DarkGray
     }
+
+    # settings.js：替换 CURRENT_VERSION 常量
+    $settingsJs = Join-Path $web 'js\settings.js'
+    if (Test-Path $settingsJs) {
+        $content = Get-Content $settingsJs -Raw -Encoding UTF8
+        $content = $content -replace "const CURRENT_VERSION = '[^']*';", "const CURRENT_VERSION = '$Version';"
+        Set-Content $settingsJs -Value $content -Encoding UTF8
+        Write-Host "[build] 已更新 settings.js 版本号：$Version" -ForegroundColor DarkGray
+    }
 }
 
 # ---- 打包分发包（如传入 -Version） ----

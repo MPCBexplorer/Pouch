@@ -45,8 +45,15 @@
     </a>
   </header>
 
-  <!-- /api/health 的 warnings（docs/04 §4.8.6） -->
-  <div id="warnBanner"></div>
+  <!-- 版本更新提示 -->
+  <div id="updateBanner" class="update-banner hidden">
+    <div class="update-banner-content">
+      <span class="update-title">发现新版本</span>
+      <span id="updateVersionText" class="update-version"></span>
+      <button type="button" class="btn btn-primary" id="updateGoBtn">前往下载</button>
+      <button type="button" class="btn btn-ghost" id="updateCloseBtn">关闭</button>
+    </div>
+  </div>
 
   <main class="page">
     <h1>学习看板</h1>
@@ -107,6 +114,8 @@
 
   <!-- 第三方库：本地引用，运行时不访问 CDN（ADR-001/006） -->
   <script src="/vendor/chart.umd.min.js"></script>
+  <script src="/vendor/marked.min.js"></script>
+  <script src="/vendor/purify.min.js"></script>
   <script type="module" src="/js/index.js"></script>
 
 <footer class="site-footer">

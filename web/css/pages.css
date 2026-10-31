@@ -1908,10 +1908,95 @@
   display: inline-block;
 }
 
+/* ============ 更新提示横幅 ============ */
+.update-banner {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--success-50);
+  border: 1px solid var(--success-200);
+  border-radius: var(--r-md);
+  color: var(--text);
+  margin: var(--sp-3) var(--sp-4);
+}
+
+[data-theme="dark"] .update-banner {
+  background: var(--success-900);
+  border-color: var(--success-600);
+}
+
+.update-banner-content {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+}
+
+.update-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.update-version {
+  margin-left: var(--sp-2);
+  color: var(--brand);
+  font-weight: var(--fw-semibold);
+}
+
+.update-banner-content .btn {
+  margin-left: auto;
+  flex: none;
+}
+
 @media (max-width: 768px) {
   .site-footer {
     flex-direction: column;
     gap: var(--sp-2);
     text-align: center;
   }
+}
+
+/* ============ 设置页版本检查结果 ============ */
+.update-field-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-2) 0;
+}
+
+.update-field-row .field-label {
+  min-width: 80px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.update-field-row .field-value {
+  font-family: var(--font-num);
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+
+.update-result {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-xs);
+}
+
+.update-result.update-ok {
+  color: var(--success-600);
+}
+
+.update-result.update-error {
+  color: var(--danger-600);
+}
+
+.update-result.update-available {
+  color: var(--warning-600);
+}
+
+/* 更新按钮禁用状态 */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

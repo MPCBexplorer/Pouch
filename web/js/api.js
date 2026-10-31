@@ -179,6 +179,21 @@ const API = (function () {
     return request('/api/storage/clear-backups', { method: 'POST' });
   }
 
+  // Version check (GitHub API, no auth needed for public repos)
+  async function checkVersion() {
+    const res = await fetch('https://api.github.com/repos/MPCBexplorer/Pouch/releases/latest', {
+      headers: { 'Accept': 'application/vnd.github+json' },
+    });
+    if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+    const data = await res.json();
+    return {
+      latest: data.tag_name.replace(/^v/, ''),
+      downloadUrl: data.html_url,
+      body: data.body || '',
+      publishedAt: data.published_at,
+    };
+  }
+
   return {
     // Wishlist
     getWishlist,
@@ -208,6 +223,8 @@ const API = (function () {
     getStorageInfo,
     openDataFolder,
     clearBackups,
+    // Version
+    checkVersion,
     // ---- docs/03 §3.10 函数名别名（ES module 页面直接用这些名字）----
     categories: getCategories,
     tags: getTags,

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2026 MPCBexplorer
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,16 @@
 import { API } from '/js/api.js';
 import { el, render, frag, toast, errorCard } from '/js/dom.js';
 
+console.log('[settings.js] Module loaded');
+console.log('[settings.js] DOM elements found:', {
+  dataDir: !!document.getElementById('dataDir'),
+  dataSize: !!document.getElementById('dataSize'),
+  backupSize: !!document.getElementById('backupSize'),
+  totalSize: !!document.getElementById('totalSize'),
+  openFolderBtn: !!document.getElementById('openFolderBtn'),
+  errorCard: !!document.getElementById('settingsError'),
+});
+
 const els = {
   dataDir: document.getElementById('dataDir'),
   dataSize: document.getElementById('dataSize'),
@@ -32,6 +42,11 @@ const els = {
   confirmClearBtn: document.getElementById('confirmClearBtn'),
   clearConfirm: document.getElementById('clearConfirm'),
   errorCard: document.getElementById('settingsError'),
+  // 版本检查
+  checkUpdateBtn: document.getElementById('checkUpdateBtn'),
+  currentVersionEl: document.getElementById('currentVersion'),
+  latestVersionEl: document.getElementById('latestVersion'),
+  updateResult: document.getElementById('updateResult'),
 };
 
 /** 字节数 → 人类可读（KB / MB / GB，保留 1 位小数）。 */
@@ -89,14 +104,71 @@ async function confirmClear() {
   }
 }
 
+/** 当前版本（与 build.ps1 -Version 保持一致，构建时可替换）。 */
+const CURRENT_VERSION = '1.2.2';
+
+/** 检查版本更新。 */
+async function checkUpdate() {
+  els.checkUpdateBtn.disabled = true;
+  els.checkUpdateBtn.textContent = '检查中…';
+  els.updateResult.textContent = '';
+  els.updateResult.className = 'update-result';
+
+  try {
+    const info = await API.checkVersion();
+    els.latestVersionEl.textContent = info.latest;
+
+    if (info.latest === CURRENT_VERSION) {
+      els.updateResult.textContent = '已是最新版本';
+      els.updateResult.className = 'update-result update-ok';
+      toast('已是最新版本', 'ok');
+    } else {
+      els.updateResult.textContent = `发现新版本 ${info.latest}，点击下方按钮前往下载`;
+      els.updateResult.className = 'update-result update-available';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-primary';
+      btn.textContent = '前往下载';
+      btn.onclick = () => {
+        window.open(info.downloadUrl, '_blank');
+      };
+      els.updateResult.appendChild(btn);
+      toast('发现新版本', 'ok');
+    }
+  } catch (e) {
+    els.latestVersionEl.textContent = '获取失败';
+    els.updateResult.textContent = '无法获取最新版本信息，请稍后再试';
+    els.updateResult.className = 'update-result update-error';
+    toast('检查更新失败', 'error');
+  } finally {
+    els.checkUpdateBtn.disabled = false;
+    els.checkUpdateBtn.textContent = '检查更新';
+  }
+}
+
 function init() {
+  console.log('[settings.js] init() 开始');
+  console.log('[settings.js] DOM 元素状态:', {
+    draftTitle: !!els.currentVersionEl,
+  });
+
+  // 初始化版本显示
+  if (els.currentVersionEl) {
+    els.currentVersionEl.textContent = CURRENT_VERSION;
+  }
+
+  // 绑定按钮事件
   els.openFolderBtn.onclick = handleOpenFolder;
   els.refreshSizeBtn.onclick = loadStorageInfo;
   els.clearBackupsBtn.onclick = handleClearBackups;
   els.cancelClearBtn.onclick = cancelClear;
   els.confirmClearBtn.onclick = confirmClear;
 
+  // 首次加载即获取存储信息
+  console.log('[settings.js] 调用 loadStorageInfo()...');
   loadStorageInfo();
+  console.log('[settings.js] loadStorageInfo() 已调用');
 }
 
 init();
+
