@@ -91,7 +91,14 @@
     <div class="modal-backdrop" id="modalBackdrop" hidden></div>
   </main>
 
-    <script type="module" src="/js/list.js"></script>
+  <!-- 第三方库：本地引用，运行时不访问 CDN（ADR-001/006） -->
+  <script src="/vendor/marked.min.js"></script>
+  <script src="/vendor/purify.min.js"></script>
+  <!-- KaTeX：LaTeX 数学公式渲染（外部库，本地引用） -->
+  <link rel="stylesheet" href="/vendor/katex.min.css">
+  <script defer src="/vendor/katex.min.js"></script>
+  <script src="/vendor/latex.js"></script>
+  <script type="module" src="/js/list.js"></script>
 
   <footer class="site-footer">
     <div class="footer-content">
