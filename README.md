@@ -1,4 +1,6 @@
-﻿<span style="align:center">[简体中文](README.zh_cn.md)</span>
+﻿<div align="center">
+ 
+[简体中文](README.zh_cn.md)
 
 # Pouch · Learning Record Dashboard
 
@@ -7,6 +9,8 @@
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 ![Local Only](https://img.shields.io/badge/Local%20Only-127.0.0.1-success?style=flat-square)
 ![Version](https://img.shields.io/badge/Version-1.3.0-success?style=flat-square)
+
+</div>
 
 ---
 
