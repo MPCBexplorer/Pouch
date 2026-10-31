@@ -39,6 +39,25 @@ const SEEN_LIMIT = 50;                     // 已看队列上限，超过重开�
 
 const CURRENT_VERSION = '1.3.0';     // 与 build.ps1 -Version 及 settings.js 保持一致
 
+/** 提取主版本号（去掉 +beta/+alpha/-rc 等预发布后缀）。 */
+function baseVersion(v) {
+  if (!v) return '0';
+  return String(v).split(/[+]/)[0];
+}
+
+/** 比较两个主版本号字符串，a > b 返回 true。 */
+function versionGt(a, b) {
+  const pa = baseVersion(a).split('.').map(Number);
+  const pb = baseVersion(b).split('.').map(Number);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const x = pa[i] || 0;
+    const y = pb[i] || 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}
+
 /** 随机回顾：每个类别各自维护"本轮已看"与"上次渲染的数据"（切 tab 不重抽，用户故事 15）。 */
 const recall = {
   inspiration: { seen: [], last: null, exhausted: false },
@@ -108,8 +127,8 @@ async function loadHealth() {
 async function checkForUpdate() {
   try {
     const info = await API.checkVersion();
-    const stableNewer = info.stable?.version && info.stable.version !== CURRENT_VERSION;
-    const preNewer = info.prerelease?.version && info.prerelease.version !== CURRENT_VERSION;
+    const stableNewer = info.stable?.version && versionGt(info.stable.version, CURRENT_VERSION);
+    const preNewer = info.prerelease?.version && versionGt(info.prerelease.version, CURRENT_VERSION);
     if (stableNewer || preNewer) {
       showUpdateBanner(info.stable, info.prerelease);
     }

@@ -108,6 +108,25 @@ async function confirmClear() {
 /** 当前版本（与 build.ps1 -Version 保持一致，构建时可替换）。 */
 const CURRENT_VERSION = '1.3.0';
 
+/** 提取主版本号（去掉 +beta/+alpha/-rc 等预发布后缀）。 */
+function baseVersion(v) {
+  if (!v) return '0';
+  return String(v).split(/[+]/)[0];
+}
+
+/** 比较两个主版本号字符串，a > b 返回 true。 */
+function versionGt(a, b) {
+  const pa = baseVersion(a).split('.').map(Number);
+  const pb = baseVersion(b).split('.').map(Number);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const x = pa[i] || 0;
+    const y = pb[i] || 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}
+
 /** 检查版本更新（同时检测稳定版与预览版）。 */
 async function checkUpdate() {
   els.checkUpdateBtn.disabled = true;
@@ -131,9 +150,9 @@ async function checkUpdate() {
       els.latestPreVersionEl.textContent = '暂无';
     }
 
-    // 比较当前版本与稳定版/预览版
-    const stableNewer = info.stable.version !== CURRENT_VERSION;
-    const preNewer = info.prerelease && info.prerelease.version !== CURRENT_VERSION;
+    // 比较当前版本与稳定版/预览版（按主版本号，忽略预发布后缀）
+    const stableNewer = info.stable.version && versionGt(info.stable.version, CURRENT_VERSION);
+    const preNewer = info.prerelease && info.prerelease.version && versionGt(info.prerelease.version, CURRENT_VERSION);
 
     if (!stableNewer && !preNewer) {
       els.updateResult.textContent = '已是最新版本';
