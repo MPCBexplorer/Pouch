@@ -108,19 +108,39 @@ async function loadHealth() {
 async function checkForUpdate() {
   try {
     const info = await API.checkVersion();
-    if (info.latest && info.latest !== CURRENT_VERSION) {
-      showUpdateBanner(info.latest, info.downloadUrl);
+    const stableNewer = info.stable?.version && info.stable.version !== CURRENT_VERSION;
+    const preNewer = info.prerelease?.version && info.prerelease.version !== CURRENT_VERSION;
+    if (stableNewer || preNewer) {
+      showUpdateBanner(info.stable, info.prerelease);
     }
   } catch { /* 网络或 API 失败时静默忽略 */ }
 }
 
-function showUpdateBanner(latestVersion, downloadUrl) {
+function showUpdateBanner(stable, prerelease) {
   const banner = els.updateBanner;
   const versionText = document.getElementById('updateVersionText');
   if (!banner || !versionText) return;
-  versionText.textContent = latestVersion;
+
+  const parts = [];
+  if (stable?.version) parts.push(`稳定版 ${stable.version}`);
+  if (prerelease?.version) parts.push(`预览版 ${prerelease.version}`);
+  versionText.textContent = parts.join(' / ');
+
   const btn = document.getElementById('updateGoBtn');
-  if (btn) btn.onclick = () => { window.open(downloadUrl, '_blank'); };
+  if (btn) {
+    btn.textContent = stable ? '下载稳定版' : '下载预览版';
+    btn.onclick = () => { window.open(stable?.downloadUrl || prerelease?.downloadUrl, '_blank'); };
+    // 如果有预览版，额外追加一个预览版下载按钮
+    if (prerelease && stable) {
+      const existing = btn;
+      const preBtn = document.createElement('button');
+      preBtn.type = 'button';
+      preBtn.className = 'btn btn-primary btn-download';
+      preBtn.textContent = '下载预览版';
+      preBtn.onclick = () => { window.open(prerelease.downloadUrl, '_blank'); };
+      existing.insertAdjacentElement('afterend', preBtn);
+    }
+  }
   banner.classList.remove('hidden');
 }
 

@@ -46,6 +46,7 @@ const els = {
   checkUpdateBtn: document.getElementById('checkUpdateBtn'),
   currentVersionEl: document.getElementById('currentVersion'),
   latestVersionEl: document.getElementById('latestVersion'),
+  latestPreVersionEl: document.getElementById('latestPreVersion'),
   updateResult: document.getElementById('updateResult'),
 };
 
@@ -107,7 +108,7 @@ async function confirmClear() {
 /** 当前版本（与 build.ps1 -Version 保持一致，构建时可替换）。 */
 const CURRENT_VERSION = '1.3.0+beta';
 
-/** 检查版本更新。 */
+/** 检查版本更新（同时检测稳定版与预览版）。 */
 async function checkUpdate() {
   els.checkUpdateBtn.disabled = true;
   els.checkUpdateBtn.textContent = '';
@@ -117,29 +118,55 @@ async function checkUpdate() {
 
   try {
     const info = await API.checkVersion();
-    if (!info.latest) {
+    if (!info.stable?.version) {
       throw new Error('版本信息无效');
     }
-    els.latestVersionEl.textContent = info.latest;
 
-    if (info.latest === CURRENT_VERSION) {
+    // 显示稳定版
+    els.latestVersionEl.textContent = info.stable.version;
+    // 显示预览版（如有）
+    if (info.prerelease) {
+      els.latestPreVersionEl.textContent = info.prerelease.version;
+    } else {
+      els.latestPreVersionEl.textContent = '暂无';
+    }
+
+    // 比较当前版本与稳定版/预览版
+    const stableNewer = info.stable.version !== CURRENT_VERSION;
+    const preNewer = info.prerelease && info.prerelease.version !== CURRENT_VERSION;
+
+    if (!stableNewer && !preNewer) {
       els.updateResult.textContent = '已是最新版本';
       els.updateResult.className = 'update-result update-ok';
       toast('已是最新版本', 'ok');
     } else {
-      els.updateResult.textContent = `发现新版本 ${info.latest}，`;
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn btn-primary btn-download';
-      btn.textContent = '前往下载';
-      btn.onclick = () => {
-        window.open(info.downloadUrl, '_blank');
-      };
-      els.updateResult.appendChild(btn);
+      const lines = [];
+      if (stableNewer) {
+        lines.push(`发现新稳定版 ${info.stable.version}，`);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-primary btn-download';
+        btn.textContent = '下载稳定版';
+        btn.onclick = () => { window.open(info.stable.downloadUrl, '_blank'); };
+        els.updateResult.appendChild(btn);
+        lines.push(' ');
+      }
+      if (preNewer) {
+        lines.push(`发现新预览版 ${info.prerelease.version}，`);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-primary btn-download';
+        btn.textContent = '下载预览版';
+        btn.onclick = () => { window.open(info.prerelease.downloadUrl, '_blank'); };
+        els.updateResult.appendChild(btn);
+      }
+      els.updateResult.textContent = lines.join('');
+      els.updateResult.className = 'update-result update-available';
       toast('发现新版本', 'ok');
     }
   } catch (e) {
     els.latestVersionEl.textContent = '检测失败';
+    els.latestPreVersionEl.textContent = '检测失败';
     els.updateResult.textContent = e.message || '无法获取最新版本信息，请稍后再试';
     els.updateResult.className = 'update-result update-error';
     toast('检查更新失败', 'error');

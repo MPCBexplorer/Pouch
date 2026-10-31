@@ -181,16 +181,34 @@ const API = (function () {
 
   // Version check (GitHub API, no auth needed for public repos)
   async function checkVersion() {
-    const res = await fetch('https://api.github.com/repos/MPCBexplorer/Pouch/releases/latest', {
+    // 获取最新稳定版
+    const stableRes = await fetch('https://api.github.com/repos/MPCBexplorer/Pouch/releases/latest', {
       headers: { 'Accept': 'application/vnd.github+json' },
     });
-    if (!res.ok) throw new Error(`GitHub API ${res.status}`);
-    const data = await res.json();
+    if (!stableRes.ok) throw new Error(`GitHub API ${stableRes.status}`);
+    const stableData = await stableRes.json();
+
+    // 获取所有 release，找最新预览版
+    const allRes = await fetch('https://api.github.com/repos/MPCBexplorer/Pouch/releases', {
+      headers: { 'Accept': 'application/vnd.github+json' },
+    });
+    if (!allRes.ok) throw new Error(`GitHub API ${allRes.status}`);
+    const allData = await allRes.json();
+    const prerelease = allData.find(r => r.prerelease === true);
+
     return {
-      latest: data.tag_name.replace(/^v/, ''),
-      downloadUrl: data.html_url,
-      body: data.body || '',
-      publishedAt: data.published_at,
+      stable: {
+        version: stableData.tag_name.replace(/^v/, ''),
+        downloadUrl: stableData.html_url,
+        body: stableData.body || '',
+        publishedAt: stableData.published_at,
+      },
+      prerelease: prerelease ? {
+        version: prerelease.tag_name.replace(/^v/, ''),
+        downloadUrl: prerelease.html_url,
+        body: prerelease.body || '',
+        publishedAt: prerelease.published_at,
+      } : null,
     };
   }
 
