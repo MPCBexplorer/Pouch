@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2026 MPCBexplorer
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,8 @@ let CATEGORIES = [];                       // /api/meta/categories，不硬编�
 const catOf = type => CATEGORIES.find(c => c.type === type);
 
 const SEEN_LIMIT = 50;                     // 已看队列上限，超过重开一轮（避免 exclude 过长）
+
+const CURRENT_VERSION = '1.3.0+beta';     // 与 build.ps1 -Version 及 settings.js 保持一致
 
 /** 随机回顾：每个类别各自维护"本轮已看"与"上次渲染的数据"（切 tab 不重抽，用户故事 15）。 */
 const recall = {
@@ -106,7 +108,7 @@ async function loadHealth() {
 async function checkForUpdate() {
   try {
     const info = await API.checkVersion();
-    if (info.update_available) {
+    if (info.latest && info.latest !== CURRENT_VERSION) {
       showUpdateBanner(info.latest, info.downloadUrl);
     }
   } catch { /* 网络或 API 失败时静默忽略 */ }
@@ -514,3 +516,4 @@ function renderStale(s) {
 }
 
 boot();
+

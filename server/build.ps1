@@ -110,6 +110,15 @@ if ($Version) {
         Set-Content $settingsJs -Value $content -Encoding UTF8
         Write-Host "[build] 已更新 settings.js 版本号：$Version" -ForegroundColor DarkGray
     }
+
+    # index.js：替换 CURRENT_VERSION 常量
+    $indexJs = Join-Path $web 'js\index.js'
+    if (Test-Path $indexJs) {
+        $content = Get-Content $indexJs -Raw -Encoding UTF8
+        $content = $content -replace "const CURRENT_VERSION = '[^']*';", "const CURRENT_VERSION = '$Version';"
+        Set-Content $indexJs -Value $content -Encoding UTF8
+        Write-Host "[build] 已更新 index.js 版本号：$Version" -ForegroundColor DarkGray
+    }
 }
 
 # ---- 打包分发包（如传入 -Version） ----

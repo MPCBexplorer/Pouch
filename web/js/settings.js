@@ -105,17 +105,21 @@ async function confirmClear() {
 }
 
 /** 当前版本（与 build.ps1 -Version 保持一致，构建时可替换）。 */
-const CURRENT_VERSION = '1.3.0+alpha';
+const CURRENT_VERSION = '1.3.0+beta';
 
 /** 检查版本更新。 */
 async function checkUpdate() {
   els.checkUpdateBtn.disabled = true;
-  els.checkUpdateBtn.textContent = '检查中…';
+  els.checkUpdateBtn.textContent = '';
+  els.checkUpdateBtn.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>检查中…');
   els.updateResult.textContent = '';
   els.updateResult.className = 'update-result';
 
   try {
     const info = await API.checkVersion();
+    if (!info.latest) {
+      throw new Error('版本信息无效');
+    }
     els.latestVersionEl.textContent = info.latest;
 
     if (info.latest === CURRENT_VERSION) {
@@ -123,11 +127,10 @@ async function checkUpdate() {
       els.updateResult.className = 'update-result update-ok';
       toast('已是最新版本', 'ok');
     } else {
-      els.updateResult.textContent = `发现新版本 ${info.latest}，点击下方按钮前往下载`;
-      els.updateResult.className = 'update-result update-available';
+      els.updateResult.textContent = `发现新版本 ${info.latest}，`;
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'btn btn-primary';
+      btn.className = 'btn btn-primary btn-download';
       btn.textContent = '前往下载';
       btn.onclick = () => {
         window.open(info.downloadUrl, '_blank');
@@ -136,13 +139,13 @@ async function checkUpdate() {
       toast('发现新版本', 'ok');
     }
   } catch (e) {
-    els.latestVersionEl.textContent = '获取失败';
-    els.updateResult.textContent = '无法获取最新版本信息，请稍后再试';
+    els.latestVersionEl.textContent = '检测失败';
+    els.updateResult.textContent = e.message || '无法获取最新版本信息，请稍后再试';
     els.updateResult.className = 'update-result update-error';
     toast('检查更新失败', 'error');
   } finally {
     els.checkUpdateBtn.disabled = false;
-    els.checkUpdateBtn.textContent = '检查更新';
+    els.checkUpdateBtn.textContent = '重试';
   }
 }
 
@@ -163,14 +166,19 @@ function init() {
   els.clearBackupsBtn.onclick = handleClearBackups;
   els.cancelClearBtn.onclick = cancelClear;
   els.confirmClearBtn.onclick = confirmClear;
+  els.checkUpdateBtn.onclick = checkUpdate;
 
   // 首次加载即获取存储信息
   console.log('[settings.js] 调用 loadStorageInfo()...');
   loadStorageInfo();
   console.log('[settings.js] loadStorageInfo() 已调用');
+
+  // 首次加载即自动检查版本更新
+  checkUpdate();
 }
 
 init();
+
 
 
 

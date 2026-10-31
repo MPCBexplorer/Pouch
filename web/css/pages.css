@@ -1923,7 +1923,7 @@
 
 /* ============ 更新提示横幅 ============ */
 .update-banner {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: space-between;
   padding: var(--sp-3) var(--sp-4);
@@ -1938,6 +1938,8 @@
   background: var(--success-900);
   border-color: var(--success-600);
 }
+
+.hidden { display: none !important; }
 
 .update-banner-content {
   display: flex;
@@ -1959,7 +1961,7 @@
 }
 
 .update-banner-content .btn {
-  margin-left: auto;
+  margin-left: var(--sp-2);
   flex: none;
 }
 
@@ -2012,4 +2014,26 @@
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* 加载 spinner（沙漏） */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: var(--sp-2);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 版本检查结果中的下载按钮间距 */
+.update-result .btn-download {
+  margin-left: var(--sp-3);
 }
