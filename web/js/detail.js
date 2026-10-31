@@ -26,7 +26,7 @@
  *   - 不用字符串拼接 HTML；唯一 DOM 注入入口是 dom.js 的 el({html})，且只喂 DOMPurify 净化后的 Markdown
  */
 import { API, LIMITS } from '/js/api.js';
-import { el, render, frag, excerpt, relTime, fullTime, toast, statusLabel, renderWarnings, errorCard } from '/js/dom.js';
+import { el, render, frag, excerpt, relTime, fullTime, toast, statusLabel, renderWarnings, errorCard, renderMarkdown, renderLatexText } from '/js/dom.js';
 
 // ============ 常量 ============
 
@@ -71,25 +71,6 @@ const catOf = (type) => CATEGORIES.find(c => c.type === type) || null;
 // ============ 状态文案（共享件：dom.js 从元数据取值） ============
 
 // ============ Markdown 渲染（docs/04 §4.8.2，本项目唯一 XSS 风险点） ============
-
-function renderMarkdown(src) {
-  if (!src || !src.trim()) return '';
-  marked.setOptions({
-    gfm: true,          // GitHub 风格：表格、删除线、任务列表
-    breaks: true,       // 单个换行转 <br>，符合随手记录的书写习惯
-    headerIds: false,   // 不生成 id，避免与页面元素冲突
-    mangle: false,
-  });
-  const raw = marked.parse(src);
-  return DOMPurify.sanitize(raw, {
-    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'del', 'code', 'pre', 'blockquote',
-                   'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                   'a', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'img'],
-    ALLOWED_ATTR: ['href', 'title', 'src', 'alt', 'class'],
-    // 禁止 javascript: 等危险协议（DOMPurify 默认已阻止，显式声明以防配置漂移）
-    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
-  });
-}
 
 /** 正文/笔记的只读渲染节点。html 内容必经 DOMPurify 净化（el 的唯一注入入口）。 */
 function markdownNode(src, cls) {
@@ -158,7 +139,7 @@ function renderHeader() {
       el('span', { class: ['badge', `badge-status-${record.status}`], text: statusLabel(cat, record.status) }),
       record.pinned ? el('span', { class: 'badge badge-pinned', text: '已置顶' }) : null,
     ]}),
-    el('h1', { class: 'detail-title', text: record.title }),
+    el('h1', { class: 'detail-title', html: renderLatexText(record.title) }),
     record.source
       ? el('p', { class: 'detail-subtitle', children: [
           el('span', { class: 'detail-source', text: `来源：${record.source}` }),

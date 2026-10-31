@@ -19,7 +19,7 @@
  * 约束：不直接 fetch、不用字符串拼 HTML、只通过 DOM API 构造、错误卡片友好提示
  */
 import { API, LIMITS } from '/js/api.js';
-import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLabel } from '/js/dom.js';
+import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLabel, renderLatexText } from '/js/dom.js';
 
   // ============ 页面元素引用 ============
   const els = {
@@ -357,7 +357,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
       el('a', { class: 'row-main', href: detailUrl(r), children: [
         el('h3', { class: 'row-title', children: [
           r.pinned ? el('span', { class: 'pin-mark', text: '置顶', attrs: { 'aria-label': '已置顶' } }) : null,
-          el('span', { text: r.title }),
+          el('span', { html: renderLatexText(r.title) }),
         ]}),
         r.content ? el('p', { class: 'row-excerpt', text: excerpt(r.content, 150) }) : null,
         el('div', { class: 'row-meta', children: [

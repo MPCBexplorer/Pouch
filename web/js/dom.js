@@ -200,14 +200,50 @@ export function renderMarkdown(src) {
     headerIds: false,
     mangle: false,
   });
-  const raw = marked.parse(src);
-  return DOMPurify.sanitize(raw, {
+  var latex = window.PouchLatex || {
+    protect: function (s) { return s; },
+  };
+  // 保护 LaTeX 公式，避免被 Markdown 解析器破坏
+  var protectedSrc = latex.protect(src);
+  var raw = marked.parse(protectedSrc);
+  // DOMPurify 净化
+  var sanitized = DOMPurify.sanitize(raw, {
     ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'del', 'code', 'pre', 'blockquote',
                    'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                   'a', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'img'],
-    ALLOWED_ATTR: ['href', 'title', 'src', 'alt', 'class'],
+                   'a', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'span', 'img', 'div',
+                   'annotation', 'semantics', 'math', 'mrow', 'mi', 'mo', 'mn', 'mtext',
+                   'mfrac', 'msqrt', 'mroot', 'msub', 'msup', 'msubsup', 'munder', 'mover',
+                   'munderover', 'mmultiscripts', 'mfrac', 'mfenced', 'mstyle', 'mphantom',
+                   'mpadded', 'mpadded', 'mtable', 'mtr', 'mlabeledtr', 'mtd', 'annotation-xml'],
+    ALLOWED_ATTR: ['href', 'title', 'src', 'alt', 'class', 'id', 'xmlns', 'display'],
     ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
   });
+  // 在 DOM 层面替换 LaTeX 占位符，避免 Markdown 解析器破坏占位符文本
+  var temp = document.createElement('div');
+  temp.innerHTML = sanitized;
+  if (window.PouchLatex) window.PouchLatex.replaceInContainer(temp);
+  return temp.innerHTML;
+}
+
+/** 短文本（如标题）中的 LaTeX 渲染，不经过 Markdown 解析，仅保护公式并用 KaTeX 渲染。 */
+export function renderLatexText(src) {
+  if (!src) return '';
+  var latex = window.PouchLatex || {
+    protect: function (s) { return s; },
+  };
+  var protectedSrc = latex.protect(String(src));
+  var sanitized = DOMPurify.sanitize(protectedSrc, {
+    ALLOWED_TAGS: ['span', 'div', 'annotation', 'semantics', 'math', 'mrow', 'mi', 'mo', 'mn', 'mtext',
+                   'mfrac', 'msqrt', 'mroot', 'msub', 'msup', 'msubsup', 'munder', 'mover',
+                   'munderover', 'mmultiscripts', 'mfrac', 'mfenced', 'mstyle', 'mphantom',
+                   'mpadded', 'mtable', 'mtr', 'mlabeledtr', 'mtd', 'annotation-xml'],
+    ALLOWED_ATTR: ['class', 'id', 'xmlns', 'display'],
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+  });
+  var temp = document.createElement('div');
+  temp.innerHTML = sanitized;
+  if (window.PouchLatex) window.PouchLatex.replaceInContainer(temp);
+  return temp.innerHTML;
 }
 
 /** 学科路径拆分：'数学/线性代数' → ['数学','线性代数'] */

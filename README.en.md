@@ -4,7 +4,7 @@
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 ![Local Only](https://img.shields.io/badge/Local%20Only-127.0.0.1-success?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.2.2-success?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.3.0+alpha-success?style=flat-square)
 
 ---
 
@@ -116,6 +116,8 @@ See `CONTRIBUTING.md` for how to report issues, submit pull requests, and follow
 ---
 
 Thank you for using Pouch! 🎉
+
+
 
 
 

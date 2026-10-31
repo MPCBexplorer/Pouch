@@ -26,7 +26,7 @@
  */
 import { API } from '/js/api.js';
 import { el, render, frag, relTime, fullTime, toast, statusLabel,
-         renderWarnings, errorCard, renderMarkdown } from '/js/dom.js';
+         renderWarnings, errorCard, renderMarkdown, renderLatexText } from '/js/dom.js';
 import { formatCents } from '/js/shared/currency.js';
 import { renderComposeRing, buildTagLevel } from '/js/shared/compose-ring.js';
 
@@ -81,6 +81,9 @@ async function boot() {
 
   // 检查版本更新（静默失败，不影响首次加载）
   checkForUpdate();
+
+  // 绑定“换一条”按钮（移至标题旁）
+  bindRecallRefresh();
 }
 
 async function loadCategories() {
@@ -287,6 +290,16 @@ function summaryItem(label, cents, cls) {
 
 // ============ 区块 D：随机回顾（灵感 / 知识点 上下排列，各自独立已看队列） ============
 
+/** 绑定标题旁的“换一条”按钮。 */
+function bindRecallRefresh() {
+  document.querySelectorAll('.recall-refresh').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.getAttribute('data-type');
+      if (type) loadRandom(type);
+    });
+  });
+}
+
 async function loadRandom(type) {
   const box = document.getElementById(`recallBody${type.charAt(0).toUpperCase() + type.slice(1)}`);
   const st = recall[type];
@@ -326,7 +339,7 @@ function renderRecall(type, data) {
   const mdHtml = renderMarkdown(r.content);
   render(box, frag([
     el('a', { class: 'recall-link', href: `/detail.html?id=${r.id}&from=%2F`, children: [
-      el('h3', { class: 'recall-title', text: r.title }),
+      el('h3', { class: 'recall-title', html: renderLatexText(r.title) }),
       mdHtml
         ? el('div', { class: 'recall-excerpt', html: mdHtml })
         : el('p', { class: 'recall-excerpt empty-hint', text: '（无正文）' }),
@@ -336,15 +349,16 @@ function renderRecall(type, data) {
                      attrs: { title: fullTime(r.createdAt) } }),
       ]}),
     ]}),
-    el('div', { class: 'recall-actions', children: [
-      el('button', { class: 'btn btn-ghost', text: '换一条',
-                     on: { click: () => loadRandom(type) } }),
-      el('span', { class: 'recall-pool', text: `共 ${data.poolSize} 条${cat ? cat.label : ''}` }),
-    ]}),
     st.exhausted
       ? el('p', { class: 'recall-exhausted', text: '本轮已全部看过，再点"换一条"重新开始' })
       : null,
   ]));
+  // 更新标题旁的总数统计
+  const poolEl = document.querySelector(`.recall-pool[data-type="${type}"]`);
+  if (poolEl) {
+    const label = cat ? cat.label : '';
+    poolEl.textContent = `共 ${data.poolSize} 条${label}`;
+  }
 }
 
 // ============ 区块 E：构成环（只按标签；←/→ 沿层级调整粒度） ============

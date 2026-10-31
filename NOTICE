@@ -14,3 +14,11 @@ This product includes software developed by the following projects:
 
 - DOMPurify (https://github.com/cure53/DOMPurify)
   Licensed under Mozilla Public License 2.0
+
+- KaTeX (https://katex.org/)
+  Licensed under MIT License
+  本地文件：web/vendor/katex.min.css, web/vendor/katex.min.js (v0.16.9)
+
+- KaTeX Fonts (https://katex.org/)
+  Licensed under SIL Open Font License 1.1
+  本地文件：web/vendor/fonts/*.woff2, *.woff, *.ttf (v0.16.9)

@@ -78,16 +78,28 @@
 
       <!-- 区块 D：随机回顾（灵感 / 知识点 上下排列，各自独立已看队列） -->
       <section class="card random-recall" id="recallCard" aria-label="随机回顾">
-        <div class="recall-wrap" id="recallWrap" role="list" aria-label="随机回顾">
-          <div class="recall-section" data-type="inspiration">
-            <h2 class="card-title">随机灵感</h2>
-            <div class="recall-body" id="recallBodyInspiration" role="listitem" aria-live="polite"></div>
+          <div class="recall-wrap" id="recallWrap" role="list" aria-label="随机回顾">
+            <div class="recall-section" data-type="knowledge">
+              <div class="recall-header">
+                <h2 class="card-title">随机知识点</h2>
+                <div class="recall-title-actions">
+                  <button type="button" class="btn btn-ghost recall-refresh" data-type="knowledge">换一条</button>
+                  <span class="recall-pool" data-type="knowledge">共 0 条知识点</span>
+                </div>
+              </div>
+              <div class="recall-body" id="recallBodyKnowledge" role="listitem" aria-live="polite"></div>
+            </div>
+            <div class="recall-section" data-type="inspiration">
+              <div class="recall-header">
+                <h2 class="card-title">随机灵感</h2>
+                <div class="recall-title-actions">
+                  <button type="button" class="btn btn-ghost recall-refresh" data-type="inspiration">换一条</button>
+                  <span class="recall-pool" data-type="inspiration">共 0 条灵感</span>
+                </div>
+              </div>
+              <div class="recall-body" id="recallBodyInspiration" role="listitem" aria-live="polite"></div>
+            </div>
           </div>
-          <div class="recall-section" data-type="knowledge">
-            <h2 class="card-title">随机知识点</h2>
-            <div class="recall-body" id="recallBodyKnowledge" role="listitem" aria-live="polite"></div>
-          </div>
-        </div>
       </section>
 
       <!-- 区块 E：碎片知识构成环（只按标签；←/→ 沿标签层级调整粒度） -->
@@ -116,6 +128,10 @@
   <script src="/vendor/chart.umd.min.js"></script>
   <script src="/vendor/marked.min.js"></script>
   <script src="/vendor/purify.min.js"></script>
+  <!-- KaTeX：LaTeX 数学公式渲染（外部库，本地引用） -->
+  <link rel="stylesheet" href="/vendor/katex.min.css">
+  <script defer src="/vendor/katex.min.js"></script>
+  <script src="/vendor/latex.js"></script>
   <script type="module" src="/js/index.js"></script>
 
 <footer class="site-footer">

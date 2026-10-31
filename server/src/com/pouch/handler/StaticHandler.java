@@ -44,7 +44,10 @@ public class StaticHandler implements Handler {
             Map.entry("png",   "image/png"),
             Map.entry("ico",   "image/x-icon"),
             Map.entry("webp",  "image/webp"),
-            Map.entry("map",   "application/json"));
+            Map.entry("map",   "application/json"),
+            Map.entry("woff2", "font/woff2"),
+            Map.entry("woff",  "font/woff"),
+            Map.entry("ttf",   "font/ttf"));
 
     private final Path webRoot;
 
