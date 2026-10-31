@@ -1,6 +1,4 @@
-﻿<div align="center">
-[简体中文](README.zh_cn.md)
-</div>
+﻿<span style="align:center">[简体中文](README.zh_cn.md)</span>
 
 # Pouch · Learning Record Dashboard
 
