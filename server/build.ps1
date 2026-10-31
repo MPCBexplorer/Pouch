@@ -94,12 +94,12 @@ if ($Version) {
     }
 
     # README.en.md：替换 ![Version](https://img.shields.io/badge/Version-...)
-    $readmeEn = Join-Path $root 'README.en.md'
+    $readmeEn = Join-Path $root 'README.zh_cn.md'
     if (Test-Path $readmeEn) {
         $content = Get-Content $readmeEn -Raw -Encoding UTF8
         $content = $content -replace 'Version-.*?-success', "Version-$Version-success"
         Set-Content $readmeEn -Value $content -Encoding UTF8
-        Write-Host "[build] 已更新 README.en.md 版本徽章" -ForegroundColor DarkGray
+        Write-Host "[build] 已更新 README.zh_cn.md 版本徽章" -ForegroundColor DarkGray
     }
 
     # settings.js：替换 CURRENT_VERSION 常量
@@ -153,11 +153,11 @@ if ($Version) {
     Copy-Item $readme (Join-Path $pkgRoot 'README.md') -Force
     Write-Host "[build] 复制 README.md" -ForegroundColor DarkGray
 
-    # 6) README.en.md -> pouch/README.en.md
-    $readmeEn = Join-Path $root 'README.en.md'
-    if (Test-Path $readmeEn) {
-        Copy-Item $readmeEn (Join-Path $pkgRoot 'README.en.md') -Force
-        Write-Host "[build] 复制 README.en.md" -ForegroundColor DarkGray
+    # 6) README.zh_cn.md -> pouch/README.zh_cn.md
+    $readmeZh = Join-Path $root 'README.zh_cn.md'
+    if (Test-Path $readmeZh) {
+        Copy-Item $readmeZh (Join-Path $pkgRoot 'README.zh_cn.md') -Force
+        Write-Host "[build] 复制 README.zh_cn.md" -ForegroundColor DarkGray
     }
 
     # 7) NOTICE -> pouch/NOTICE

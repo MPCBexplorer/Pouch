@@ -37,7 +37,7 @@ const catOf = type => CATEGORIES.find(c => c.type === type);
 
 const SEEN_LIMIT = 50;                     // 已看队列上限，超过重开一轮（避免 exclude 过长）
 
-const CURRENT_VERSION = '1.3.0+beta';     // 与 build.ps1 -Version 及 settings.js 保持一致
+const CURRENT_VERSION = '1.3.0';     // 与 build.ps1 -Version 及 settings.js 保持一致
 
 /** 随机回顾：每个类别各自维护"本轮已看"与"上次渲染的数据"（切 tab 不重抽，用户故事 15）。 */
 const recall = {
@@ -536,4 +536,5 @@ function renderStale(s) {
 }
 
 boot();
+
 
