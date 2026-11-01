@@ -48,6 +48,8 @@ const els = {
   latestVersionEl: document.getElementById('latestVersion'),
   latestPreVersionEl: document.getElementById('latestPreVersion'),
   updateResult: document.getElementById('updateResult'),
+  // 列表页显示
+  listFullRender: document.getElementById('listFullRender'),
 };
 
 /** 字节数 → 人类可读（KB / MB / GB，保留 1 位小数）。 */
@@ -221,6 +223,16 @@ function init() {
 
   // 首次加载即自动检查版本更新
   checkUpdate();
+
+  // 列表页正文完全渲染开关
+  const stored = localStorage.getItem('pouch.listFullRender');
+  if (els.listFullRender) {
+    els.listFullRender.checked = stored === 'true';
+    els.listFullRender.onchange = () => {
+      localStorage.setItem('pouch.listFullRender', els.listFullRender.checked);
+      toast(els.listFullRender.checked ? '已开启列表页正文完全渲染' : '已关闭列表页正文完全渲染', 'ok');
+    };
+  }
 }
 
 init();

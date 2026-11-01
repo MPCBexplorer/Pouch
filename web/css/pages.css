@@ -1165,6 +1165,23 @@
   cursor: pointer;
 }
 
+/* 列表页显示开关（大复选框） */
+.toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+.toggle-label input {
+  width: var(--sp-4);
+  height: var(--sp-4);
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
 .detail-meta-panel {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
