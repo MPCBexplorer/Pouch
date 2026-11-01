@@ -359,7 +359,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
           r.pinned ? el('span', { class: 'pin-mark', text: '置顶', attrs: { 'aria-label': '已置顶' } }) : null,
           el('span', { html: renderLatexText(r.title) }),
         ]}),
-        r.content ? el('p', { class: 'row-excerpt', text: excerpt(r.content, 150) }) : null,
+        r.content ? el('p', { class: 'row-excerpt', html: renderLatexText(excerpt(r.content, 150)) }) : null,
         el('div', { class: 'row-meta', children: [
           el('span', { class: ['badge', `badge-status-${r.status}`], text: statusLabel(cat, r.status) }),
           ...r.tags.slice(0, 4).map(t => el('span', { class: 'badge badge-tag', text: t })),
