@@ -136,7 +136,6 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
       value: state.q || '',
       attrs: { 'aria-label': '关键词搜索' },
       on: {
-        input: debounce(e => { state.q = e.target.value; state.page = 1; reload(); }, 250),
         keydown: e => { if (e.key === 'Enter') { e.preventDefault(); state.q = e.target.value; state.page = 1; reload(); } }
       }
     });
