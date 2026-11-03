@@ -1170,7 +1170,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-3);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-base);
   color: var(--text);
   cursor: pointer;
   user-select: none;
