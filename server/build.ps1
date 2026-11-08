@@ -75,11 +75,15 @@ Write-Host "[build] 编译成功 -> $out"
 if ($Version) {
     Write-Host "[build] 替换版本徽章为：$Version" -ForegroundColor Cyan
 
+    # 徽章专用版本：若含 '-'，徽章中改为 '--'（shields.io 转义）；仅徽章使用，VERSION 常量保持原样
+    $BadgeVersion = $Version
+    if ($Version.Contains('-')) { $BadgeVersion = $Version -replace '-', '--' }
+
     # README.md：替换 ![Version](https://img.shields.io/badge/Version-...)
     $readme = Join-Path $root 'README.md'
     if (Test-Path $readme) {
         $content = Get-Content $readme -Raw -Encoding UTF8
-        $content = $content -replace 'Version-.*?-success', "Version-$Version-success"
+        $content = $content -replace 'Version-.*?-success', "Version-$BadgeVersion-success"
         Set-Content $readme -Value $content -Encoding UTF8
         Write-Host "[build] 已更新 README.md 版本徽章" -ForegroundColor DarkGray
     }
@@ -88,7 +92,7 @@ if ($Version) {
     $settings = Join-Path $web 'settings.html'
     if (Test-Path $settings) {
         $content = Get-Content $settings -Raw -Encoding UTF8
-        $content = $content -replace 'Version-.*?-success', "Version-$Version-success"
+        $content = $content -replace 'Version-.*?-success', "Version-$BadgeVersion-success"
         Set-Content $settings -Value $content -Encoding UTF8
         Write-Host "[build] 已更新 settings.html 版本徽章" -ForegroundColor DarkGray
     }
@@ -97,12 +101,12 @@ if ($Version) {
     $readmeEn = Join-Path $root 'README.zh_cn.md'
     if (Test-Path $readmeEn) {
         $content = Get-Content $readmeEn -Raw -Encoding UTF8
-        $content = $content -replace 'Version-.*?-success', "Version-$Version-success"
+        $content = $content -replace 'Version-.*?-success', "Version-$BadgeVersion-success"
         Set-Content $readmeEn -Value $content -Encoding UTF8
         Write-Host "[build] 已更新 README.zh_cn.md 版本徽章" -ForegroundColor DarkGray
     }
 
-    # settings.js：替换 CURRENT_VERSION 常量
+    # settings.js：替换 CURRENT_VERSION 常量（保持原版本号，不做徽章转义）
     $settingsJs = Join-Path $web 'js\settings.js'
     if (Test-Path $settingsJs) {
         $content = Get-Content $settingsJs -Raw -Encoding UTF8
@@ -111,7 +115,7 @@ if ($Version) {
         Write-Host "[build] 已更新 settings.js 版本号：$Version" -ForegroundColor DarkGray
     }
 
-    # index.js：替换 CURRENT_VERSION 常量
+    # index.js：替换 CURRENT_VERSION 常量（保持原版本号，不做徽章转义）
     $indexJs = Join-Path $web 'js\index.js'
     if (Test-Path $indexJs) {
         $content = Get-Content $indexJs -Raw -Encoding UTF8
