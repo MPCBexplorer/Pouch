@@ -224,10 +224,13 @@ function init() {
   // 首次加载即自动检查版本更新
   checkUpdate();
 
-  // 列表页正文完全渲染开关
+  // 列表页正文完全渲染开关（未设置时默认开启）
   const stored = localStorage.getItem('pouch.listFullRender');
+  if (stored === null) {
+    localStorage.setItem('pouch.listFullRender', 'true');
+  }
   if (els.listFullRender) {
-    els.listFullRender.checked = stored === 'true';
+    els.listFullRender.checked = stored === null || stored === 'true';
     els.listFullRender.onchange = () => {
       localStorage.setItem('pouch.listFullRender', els.listFullRender.checked);
       toast(els.listFullRender.checked ? '已开启列表页正文完全渲染' : '已关闭列表页正文完全渲染', 'ok');
