@@ -8,7 +8,7 @@
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 ![Local Only](https://img.shields.io/badge/Local%20Only-127.0.0.1-success?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.5.0--beta-success?style=flat-square)
+![Version](https://img.shields.io/badge/Version---1.5.0-success?style=flat-square)
 
 </div>
 
@@ -76,6 +76,17 @@ Each file contains `version` and file-level `updatedAt`. **Write backup**: befor
 | `/detail.html?id=<uuid>` | Detail page: Markdown read/edit, append-only notes, tag management, category change, status switch |
 | `/wishlist.html` | Wishlist: add/delete, mark purchased, ↑/↓ adjacent sorting, three-item summary |
 
+## Export
+
+Pouch supports exporting data in two formats:
+
+### PDF Export
+Available on both the list page (`/list.html`) and wishlist page (`/wishlist.html`). Select entries, click **Export** to enter selection mode, then click **Download PDF** in the preview panel. The preview renders exactly what will appear in the PDF. The exported PDF includes a timestamp and per-entry summary (total / spent / remaining).
+
+### JSON Export & Import
+- **JSON Export**: On the list page and wishlist page, click **Export as JSON** to download the selected entries as a JSON file. The file name includes the category and date.
+- **JSON Import**: Click **Import JSON** next to the Export button to upload a previously exported JSON file. The system validates that entries belong to the current category before importing.
+
 ## Common Troubleshooting
 
 | Symptom | Cause / Fix |
@@ -126,6 +137,7 @@ See `CONTRIBUTING.md` for how to report issues, submit pull requests, and follow
 ---
 
 Thank you for using Pouch! 🎉
+
 
 
 

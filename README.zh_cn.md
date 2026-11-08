@@ -6,7 +6,7 @@
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 ![完全本地](https://img.shields.io/badge/完全本地-127.0.0.1-success?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.5.0--beta-success?style=flat-square)
+![Version](https://img.shields.io/badge/Version---1.5.0-success?style=flat-square)
 
 </div>
 
@@ -89,6 +89,17 @@ powershell -ExecutionPolicy Bypass -File server\start.ps1 -Data D:\tmp\pouch-tes
 | `/detail.html?id=<uuid>` | 详情页：Markdown 只读/编辑、追加式笔记、标签管理、类别变更、状态切换 |
 | `/wishlist.html` | 心愿单：增删改、勾选已购、↑/↓ 邻位排序、三项汇总 |
 
+## 导出功能
+
+Pouch 支持两种导出格式：
+
+### PDF 导出
+列表页（`/list.html`）与心愿单页（`/wishlist.html`）均可用。勾选条目后点击 **导出** 进入选择模式，在预览面板点击 **下载 PDF** 即可。预览即所得，导出的 PDF 包含导出时间戳与汇总行（心愿单包含总计 / 已花费 / 还差）。
+
+### JSON 导出与导入
+- **JSON 导出**：列表页与心愿单页点击 **导出为 JSON**，将选中条目下载为 JSON 文件，文件名包含类别与日期。
+- **JSON 导入**：点击导出按钮旁的 **导入 JSON**，上传之前导出的 JSON 文件，系统会校验条目是否属于当前类别后再导入。
+
 ## 常用排查
 
 | 症状 | 原因 / 处理 |
@@ -124,6 +135,7 @@ scripts/           约束检查脚本
 ---
 
 感谢您使用奚囊系统! 🎉
+
 
 
 

@@ -19,6 +19,7 @@ skills/
 docs/
 .scratch/
 AGENTS.md
+.kilo
 
 # 运行时日志
 server/run.log
