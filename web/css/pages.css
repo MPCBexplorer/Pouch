@@ -2172,6 +2172,13 @@
   margin-top: var(--sp-1);
 }
 
+/* 导出+导入按钮组（在“导出”按钮旁） */
+.export-button-group {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
 .export-preview-divider {
   border: none;
   border-top: 1px solid var(--border);

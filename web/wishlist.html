@@ -48,7 +48,10 @@
   <main class="page">
     <div class="wishlist-header-toolbar">
       <h1>心愿单</h1>
-      <button type="button" class="btn btn-primary" id="wishlistExportBtn">导出</button>
+      <div class="export-button-group">
+        <button type="button" class="btn btn-primary" id="wishlistExportBtn">导出</button>
+        <button type="button" class="btn btn-primary" id="wishlistImportBtn">导入 JSON</button>
+      </div>
     </div>
 
     <!-- 导出工具栏（选择模式下显示） -->
@@ -117,6 +120,8 @@
 
     <!-- 导出预览（预览模式下显示） -->
     <div id="wishlistExportPreview" class="export-preview-wrap" hidden></div>
+    <!-- 导入文件选择（隐藏，由 JS 触发） -->
+    <input type="file" id="wishlistImportJsonFile" accept=".json" hidden>
   </main>
 
   <!-- 共享模块 -->

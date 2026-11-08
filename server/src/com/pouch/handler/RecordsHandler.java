@@ -15,6 +15,8 @@
  */
 package com.pouch.handler;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.pouch.*;
 import com.pouch.model.Category;
@@ -23,7 +25,9 @@ import com.pouch.service.RecordService;
 import com.pouch.store.JsonStore;
 import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -67,6 +71,25 @@ public class RecordsHandler implements Handler {
 
         // ---- /api/records ----
         if ("POST".equals(m)) {
+            // 批量导入：POST /api/records/import?type=todo  body: [...record bodies...]
+            if ("import".equals(pp.get("_suffix"))) {
+                Map<String, String> q = Requests.query(ex);
+                Category c;
+                try { c = Category.fromWire(q.get("type")); }
+                catch (IllegalArgumentException e) { throw new HttpError(400, "invalid_type", "type 非法"); }
+                JsonArray arr = Requests.readBodyArray(ex);
+                List<Record> imported = new ArrayList<>();
+                for (JsonElement el : arr) {
+                    if (el.isJsonObject()) {
+                        imported.add(svc.create(c, el.getAsJsonObject()));
+                    }
+                }
+                Map<String, Object> out = new LinkedHashMap<>();
+                out.put("imported", imported.size());
+                out.put("items", imported);
+                Respond.json(ex, 200, out);
+                return;
+            }
             Map<String, String> q = Requests.query(ex);
             Category c;
             try { c = Category.fromWire(q.get("type")); }

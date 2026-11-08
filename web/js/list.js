@@ -39,6 +39,7 @@ listTitle: document.getElementById('listTitle'),
     modalBackdrop: document.getElementById('modalBackdrop'),
   exportToolbar: document.getElementById('exportToolbar'),
   exportPreview: document.getElementById('exportPreview'),
+  importJsonFile: document.getElementById('importJsonFile'),
   filterbarCard: document.getElementById('filterbarCard'),
   listviewCard: document.getElementById('listviewCard'),
 };
@@ -220,6 +221,7 @@ function renderPreview(previewItems) {
     el('div', { class: 'export-preview-list', children: groupNodes }),
     el('div', { class: 'export-preview-footer', children: [
       el('button', { class: 'btn btn-primary', text: '下载 PDF', on: { click: savePDF } }),
+      el('button', { class: 'btn btn-ghost', text: '导出为 JSON', on: { click: exportJSON } }),
       el('button', { class: 'btn btn-ghost', text: '返回重选', on: { click: () => { previewMode = false; reload(); } } }),
       el('button', { class: 'btn btn-ghost', text: '取消', on: { click: exitExportMode } }),
     ]}),
@@ -243,16 +245,43 @@ async function exportJSON() {
     const filtered = allItems.filter(r => selectedIds.has(r.id));
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
-    const blob = new Blob([JSON.stringify(filtered, null, 2)], { type: 'application/json' });
+    // 导出时注明类别：每条记录确保带 type 字段
+    const exportData = filtered.map(r => ({ ...r, type: r.type || state.type }));
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = el('a', { href: url, download: `pouch-export-${dateStr}.json`, attrs: { style: 'display:none' } });
+    const a = el('a', { href: url, download: `pouch-export-${state.type}-${dateStr}.json`, attrs: { style: 'display:none' } });
     document.body.append(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    toast('JSON 导出成功', 'ok');
+    toast(`JSON 导出成功（${state.type}）`, 'ok');
   } catch (e) {
     toast('导出失败：' + (e.message || '未知错误'), 'error');
+  }
+}
+
+/** 从 JSON 文件导入选中的记录。导入前验证类别是否与当前页一致。 */
+async function handleImport(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const items = JSON.parse(text);
+    if (!Array.isArray(items)) throw new Error('JSON 必须是数组');
+    // 验证类别：导入的每条记录 type 必须与当前页类别一致
+    for (const item of items) {
+      if (item.type && item.type !== state.type) {
+        throw new Error('错误的类别');
+      }
+    }
+    const res = await API.importRecords(state.type, items);
+    const n = res?.imported ?? items.length;
+    toast(`已导入 ${n} 条（${state.type}）`, 'ok');
+    els.importJsonFile.value = '';
+    await reload();
+  } catch (err) {
+    els.importJsonFile.value = '';
+    toast('导入失败：' + (err.message || '未知错误'), 'error');
   }
 }
 
@@ -604,13 +633,25 @@ function buildExportToolbar() {
   ]});
 }
 
-function exportButton() {
+function importButton() {
   return el('button', {
     type: 'button',
     class: 'btn btn-primary',
-    text: '导出',
-    on: { click: enterExportMode }
+    text: '导入 JSON',
+    on: { click: () => els.importJsonFile.click() }
   });
+}
+
+function exportButton() {
+  return el('div', { class: 'export-button-group', children: [
+    el('button', {
+      type: 'button',
+      class: 'btn btn-primary',
+      text: '导出',
+      on: { click: enterExportMode }
+    }),
+    importButton(),
+  ]});
 }
 
 let isLoading = false;
@@ -1321,6 +1362,7 @@ if (exportMode) {
   els.newRecordModal.querySelector('.modal-close').addEventListener('click', closeNewModal);
   els.newRecordModal.querySelector('.modal-cancel').addEventListener('click', closeNewModal);
   els.modalBackdrop.addEventListener('click', closeNewModal);
+  els.importJsonFile.addEventListener('change', handleImport);
   // ESC 关闭模态框
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && els.newRecordModal.open) closeNewModal(); });
 

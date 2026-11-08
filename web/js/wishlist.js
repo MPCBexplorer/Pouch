@@ -37,12 +37,14 @@ import { toast } from '/js/dom.js';
     wishNote: document.getElementById('wishNote'),
     quickAddBtn: document.getElementById('quickAddBtn'),
     wishlistExportBtn: document.getElementById('wishlistExportBtn'),
+    wishlistImportBtn: document.getElementById('wishlistImportBtn'),
     wishlistItems: document.getElementById('wishlistItems'),
     wishlistList: document.getElementById('wishlistList'),
     emptyState: document.getElementById('emptyState'),
     wishlistError: document.getElementById('wishlistError'),
     wishlistExportToolbar: document.getElementById('wishlistExportToolbar'),
     wishlistExportPreview: document.getElementById('wishlistExportPreview'),
+    wishlistImportJsonFile: document.getElementById('wishlistImportJsonFile'),
   };
 
   // 状态
@@ -179,6 +181,7 @@ import { toast } from '/js/dom.js';
       ]),
       createElement('div', { class: 'export-preview-footer' }, [
         createElement('button', { class: 'btn btn-primary', onClick: savePDF }, ['下载 PDF']),
+        createElement('button', { class: 'btn btn-ghost', onClick: exportJSON }, ['导出为 JSON']),
         createElement('button', { class: 'btn btn-ghost', onClick: () => { previewMode = false; els.wishlistExportToolbar.hidden = false; els.wishlistList.hidden = false; renderItems(items); } }, ['返回重选']),
         createElement('button', { class: 'btn btn-ghost', onClick: exitExportMode }, ['取消']),
       ]),
@@ -205,6 +208,31 @@ import { toast } from '/js/dom.js';
     } catch (e) {
       console.error('导出失败:', e);
       toast('导出失败：' + (e.message || '未知错误'), 'error');
+    }
+  }
+
+  /** 从 JSON 文件导入心愿条目。 */
+  async function handleImport(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const items = JSON.parse(text);
+      if (!Array.isArray(items)) throw new Error('JSON 必须是数组');
+      // 验证类别：每条心愿条目必须包含 name 与 amountCents
+      for (const item of items) {
+        if (!item || typeof item.name !== 'string' || item.amountCents === undefined) {
+          throw new Error('错误的类别');
+        }
+      }
+      const res = await API.importWishlist(items);
+      const n = res?.imported ?? items.length;
+      toast(`已导入 ${n} 条`, 'ok');
+      els.wishlistImportJsonFile.value = '';
+      await loadWishlist();
+    } catch (err) {
+      els.wishlistImportJsonFile.value = '';
+      toast('导入失败：' + (err.message || '未知错误'), 'error');
     }
   }
 
@@ -604,6 +632,7 @@ import { toast } from '/js/dom.js';
   // ---- 初始化 ----
 
   els.quickAddForm.addEventListener('submit', handleQuickAdd);
+  els.wishlistImportJsonFile.addEventListener('change', handleImport);
 
   // 回车在金额框也提交
   els.wishAmount.addEventListener('keydown', (e) => {
@@ -616,6 +645,11 @@ import { toast } from '/js/dom.js';
     enterExportMode();
     els.wishlistExportToolbar.hidden = false;
     renderItems(items);
+  });
+
+  // 导入按钮（在导出按钮旁）
+  els.wishlistImportBtn.addEventListener('click', () => {
+    els.wishlistImportJsonFile.click();
   });
 
   // 初始加载

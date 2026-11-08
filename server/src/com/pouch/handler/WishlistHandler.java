@@ -15,6 +15,8 @@
  */
 package com.pouch.handler;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.pouch.*;
 import com.pouch.model.WishItem;
@@ -22,7 +24,9 @@ import com.pouch.service.WishlistService;
 import com.pouch.store.JsonStore;
 import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class WishlistHandler implements Handler {
@@ -67,6 +71,22 @@ public class WishlistHandler implements Handler {
                 return;
             }
             if ("POST".equals(m)) {
+                // 批量导入：POST /api/wishlist/import  body: [...wish bodies...]
+                if ("import".equals(pp.get("_suffix"))) {
+                    JsonArray arr = Requests.readBodyArray(ex);
+                    List<WishItem> imported = new ArrayList<>();
+                    for (JsonElement el : arr) {
+                        if (el.isJsonObject()) {
+                            imported.add(svc.create(el.getAsJsonObject()));
+                        }
+                    }
+                    Map<String, Object> out = new LinkedHashMap<>();
+                    out.put("imported", imported.size());
+                    out.put("items", imported);
+                    out.put("summary", svc.summary());
+                    Respond.json(ex, 200, out);
+                    return;
+                }
                 JsonObject b = Requests.readBody(ex);
                 WishItem w = svc.create(b);
                 Map<String, Object> out = new LinkedHashMap<>();

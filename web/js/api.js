@@ -109,6 +109,10 @@ const API = (function () {
   async function deleteWish(id) {
     return request(`/api/wishlist/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
+  /** 批量导入心愿条目：POST /api/wishlist/import  body: JSON 数组 */
+  async function importWishlist(items) {
+    return request('/api/wishlist/import', { method: 'POST', body: items });
+  }
 
   // Records
   async function getRecords(params) {
@@ -129,6 +133,10 @@ const API = (function () {
   }
   async function deleteRecord(id) {
     return request(`/api/records/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+  /** 批量导入记录：POST /api/records/import?type=…  body: JSON 数组 */
+  async function importRecords(type, items) {
+    return request('/api/records/import' + qs({ type }), { method: 'POST', body: items });
   }
   async function appendNote(id, content) {
     return request(`/api/records/${encodeURIComponent(id)}/notes`, { method: 'POST', body: { content } });
@@ -219,12 +227,14 @@ const API = (function () {
     createWish,
     updateWish,
     deleteWish,
+    importWishlist,
     // Records
     getRecords,
     getRecord,
     createRecord,
     updateRecord,
     deleteRecord,
+    importRecords,
     appendNote,
     editNote,
     deleteNote,

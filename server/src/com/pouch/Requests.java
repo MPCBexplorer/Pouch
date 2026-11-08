@@ -15,6 +15,7 @@
  */
 package com.pouch;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -55,6 +56,29 @@ public final class Requests {
         if (el == null || el.isJsonNull()) return new JsonObject();
         if (!el.isJsonObject()) throw new HttpError(400, "invalid_json", "请求体必须是 JSON 对象");
         return el.getAsJsonObject();
+    }
+
+    /** 读 request body：必须是 JSON 数组（用于批量导入）。空 body 返回空数组。 */
+    public static JsonArray readBodyArray(HttpExchange ex) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] buf = new byte[8192];
+        int n;
+        long total = 0;
+        try (InputStream in = ex.getRequestBody()) {
+            while ((n = in.read(buf)) > 0) {
+                total += n;
+                if (total > MAX_BODY) throw new HttpError(400, "body_too_large", "请求体超过 2 MB");
+                bos.write(buf, 0, n);
+            }
+        }
+        byte[] bytes = bos.toByteArray();
+        if (bytes.length == 0) return new JsonArray();
+        JsonElement el;
+        try { el = JsonParser.parseString(new String(bytes, java.nio.charset.StandardCharsets.UTF_8)); }
+        catch (RuntimeException e) { throw new HttpError(400, "invalid_json", "请求体不是合法 JSON"); }
+        if (el == null || el.isJsonNull()) return new JsonArray();
+        if (!el.isJsonArray()) throw new HttpError(400, "invalid_json", "请求体必须是 JSON 数组");
+        return el.getAsJsonArray();
     }
 
     /** 解析 query string → Map。保留第一个值（重复键不覆盖）。 */
