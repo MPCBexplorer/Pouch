@@ -38,6 +38,7 @@ import { toast } from '/js/dom.js';
     quickAddBtn: document.getElementById('quickAddBtn'),
     wishlistExportBtn: document.getElementById('wishlistExportBtn'),
     wishlistItems: document.getElementById('wishlistItems'),
+    wishlistList: document.getElementById('wishlistList'),
     emptyState: document.getElementById('emptyState'),
     wishlistError: document.getElementById('wishlistError'),
     wishlistExportToolbar: document.getElementById('wishlistExportToolbar'),
@@ -77,17 +78,6 @@ import { toast } from '/js/dom.js';
     return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
   }
 
-  /** 将 ArrayBuffer 转换为 base64 字符串，避免大文件展开参数溢出。 */
-  function arrayBufferToBase64(buffer) {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  }
-
   // ============ 导出模式（导出功能） ============
 
   function enterExportMode() {
@@ -95,6 +85,8 @@ import { toast } from '/js/dom.js';
     previewMode = false;
     selectedIds.clear();
     els.quickAddBtn.disabled = true;
+    els.wishlistExportToolbar.replaceChildren(buildExportToolbar());
+    els.wishlistExportToolbar.hidden = false;
     renderItems(items);
   }
 
@@ -104,8 +96,10 @@ import { toast } from '/js/dom.js';
     selectedIds.clear();
     els.quickAddBtn.disabled = false;
     renderItems(items);
+    els.wishlistExportToolbar.replaceChildren();
     els.wishlistExportToolbar.hidden = true;
     els.wishlistExportPreview.hidden = true;
+    els.wishlistList.hidden = false;
     els.wishlistExportBtn.disabled = false;
   }
 
@@ -113,11 +107,13 @@ import { toast } from '/js/dom.js';
     if (selectedIds.has(id)) selectedIds.delete(id);
     else selectedIds.add(id);
     renderItems(items);
+    updateExportCount();
   }
 
   function selectAll() {
     items.forEach(item => selectedIds.add(item.id));
     renderItems(items);
+    updateExportCount();
   }
 
   function invertSelection() {
@@ -126,6 +122,12 @@ import { toast } from '/js/dom.js';
       else selectedIds.add(item.id);
     });
     renderItems(items);
+    updateExportCount();
+  }
+
+  function updateExportCount() {
+    const countEl = els.wishlistExportToolbar.querySelector('.export-count');
+    if (countEl) countEl.textContent = `已选 ${selectedIds.size} 条`;
   }
 
   function confirmSelection() {
@@ -139,19 +141,45 @@ import { toast } from '/js/dom.js';
     els.emptyState.hidden = true;
     els.wishlistExportToolbar.hidden = true;
     els.wishlistExportPreview.hidden = false;
+    els.wishlistList.hidden = true;
     els.wishlistExportPreview.replaceChildren();
 
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+
     const preview = createElement('div', { class: 'export-preview' }, [
-      createElement('h3', { class: 'export-preview-title' }, [`导出预览（共 ${selectedItems.length} 条）`]),
+      createElement('h3', { class: 'export-preview-title' }, [
+        `导出预览（共 ${selectedItems.length} 条）`,
+        createElement('span', { class: 'export-preview-timestamp' }, [`  导出于 ${dateStr} ${timeStr}`]),
+      ]),
       createElement('div', { class: 'export-preview-list' }, selectedItems.map(item =>
         createElement('div', { class: 'export-preview-item' }, [
-          createElement('span', { class: 'export-preview-title-text' }, [item.name]),
-          createElement('span', { class: 'export-preview-type' }, [`¥${formatCents(item.amountCents)}`]),
+          createElement('div', { class: 'export-preview-item-row' }, [
+            createElement('span', { class: 'export-preview-title-text' }, [item.name]),
+            createElement('span', { class: 'export-preview-type' }, [formatCents(item.amountCents)]),
+          ]),
+          item.note ? createElement('div', { class: 'export-preview-note' }, [`备注：${item.note}`]) : null,
+          createElement('div', { class: 'export-preview-status' }, [
+            `状态：${item.purchased ? '已购买' : '未购买'}` + (item.purchasedAt ? `，购买于 ${formatDate(item.purchasedAt)}` : ''),
+          ]),
         ])
       )),
+      createElement('hr', { class: 'export-preview-divider' }),
+      createElement('div', { class: 'export-preview-summary' }, [
+        createElement('span', { class: 'export-preview-summary-value' }, [formatCents(
+          selectedItems.reduce((s, i) => s + i.amountCents, 0)
+        )]),
+        createElement('span', { class: 'export-preview-summary-value spent' }, [formatCents(
+          selectedItems.filter(i => i.purchased).reduce((s, i) => s + i.amountCents, 0)
+        )]),
+        createElement('span', { class: 'export-preview-summary-value remaining' }, [formatCents(
+          selectedItems.filter(i => !i.purchased).reduce((s, i) => s + i.amountCents, 0)
+        )]),
+      ]),
       createElement('div', { class: 'export-preview-footer' }, [
         createElement('button', { class: 'btn btn-primary', onClick: savePDF }, ['下载 PDF']),
-        createElement('button', { class: 'btn btn-ghost', onClick: () => { previewMode = false; renderItems(items); } }, ['返回重选']),
+        createElement('button', { class: 'btn btn-ghost', onClick: () => { previewMode = false; els.wishlistExportToolbar.hidden = false; els.wishlistList.hidden = false; renderItems(items); } }, ['返回重选']),
         createElement('button', { class: 'btn btn-ghost', onClick: exitExportMode }, ['取消']),
       ]),
     ]);
@@ -176,129 +204,115 @@ import { toast } from '/js/dom.js';
       toast('JSON 导出成功', 'ok');
     } catch (e) {
       console.error('导出失败:', e);
-      alert('导出失败：' + (e.message || '未知错误'));
+      toast('导出失败：' + (e.message || '未知错误'), 'error');
     }
   }
 
-  /** 生成 PDF 并在新标签页预览，用户可预览后再下载保存。 */
-  function savePDF() {
-    const selectedItems = items.filter(item => selectedIds.has(item.id));
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10);
+  /** 生成 PDF 并在新标签页预览，用户可预览后再下载保存。预览即所得。 */
+  async function savePDF() {
+    try {
+      const previewEl = els.wishlistExportPreview;
+      if (!previewEl) {
+        throw new Error('找不到导出预览区域 #wishlistExportPreview');
+      }
 
-    // 加载中文字体
-    fetch('/vendor/fonts/NotoSansSC-Regular.ttf')
-      .then(res => res.arrayBuffer())
-      .then(fontBuffer => {
-        const fontData = arrayBufferToBase64(fontBuffer);
-        const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF;
-        if (typeof jsPDFClass !== 'function') {
-          throw new Error('jsPDF constructor not found. window.jspdf=' + typeof window.jspdf + ', window.jsPDF=' + typeof window.jsPDF);
-        }
-        const doc = new jsPDFClass();
-        doc.addFileToVFS('NotoSansSC-Regular.ttf', fontData);
-        doc.addFont('NotoSansSC-Regular.ttf', 'NotoSansSC', 'normal');
-        doc.addFont('NotoSansSC-Regular.ttf', 'NotoSansSC', 'bold');
-        doc.setFont('NotoSansSC');
+      const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF;
+      if (typeof jsPDFClass !== 'function') {
+        throw new Error('jsPDF constructor not found.');
+      }
+      const doc = new jsPDFClass();
 
-        const margin = 20;
-        const maxWidth = doc.internal.pageSize.getWidth() - margin * 2;
-        let y = margin;
+      const margin = 20;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const contentWidth = pageWidth - margin * 2;
+      const contentHeight = pageHeight - margin * 2;
 
-        // 标题
-        doc.setFontSize(18);
-        doc.setFont('NotoSansSC', 'bold');
-        doc.text(`心愿单（共 ${selectedItems.length} 条）`, margin, y);
-        y += 12;
-
-        for (let i = 0; i < selectedItems.length; i++) {
-          const item = selectedItems[i];
-
-          // 检查是否需要新页
-          if (y > doc.internal.pageSize.height - 40) {
-            doc.addPage();
-            y = margin;
-          }
-
-          // 编号 + 名称
-          doc.setFontSize(12);
-          doc.setFont('NotoSansSC', 'bold');
-          doc.text(`${i + 1}. ${item.name}`, margin, y);
-          y += 6;
-
-          // 金额
-          doc.setFontSize(10);
-          doc.setFont('NotoSansSC', 'normal');
-          doc.text(`金额：¥${formatCents(item.amountCents)}`, margin, y);
-          y += 5;
-
-          // 备注
-          if (item.note) {
-            doc.setFontSize(10);
-            const noteLines = doc.splitTextToSize(`备注：${item.note}`, maxWidth);
-            for (const line of noteLines) {
-              doc.text(line, margin, y);
-              y += 5;
-            }
-          }
-
-          // 购买状态
-          const status = item.purchased ? '已购买' : '未购买';
-          doc.setFontSize(9);
-          doc.setFont('NotoSansSC', 'normal');
-          doc.text(`状态：${status}` + (item.purchasedAt ? `，购买于 ${formatDate(item.purchasedAt)}` : ''), margin, y);
-          y += 7;
-        }
-
-        const fileName = `pouch-wishlist-export-${dateStr}.pdf`;
-
-        // 生成 Data URI 并在新标签页预览
-        const pdfDataUri = doc.output('datauristring');
-        const previewWin = window.open('', '_blank', 'width=1100,height=1500');
-        previewWin.document.write(`
-          <!DOCTYPE html>
-          <html lang="zh-CN">
-          <head>
-            <meta charset="utf-8">
-            <title>PDF 预览 - ${fileName}</title>
-            <style>
-              body { margin: 0; padding: 0; background: #f5f5f5; font-family: sans-serif; }
-              .toolbar { position: fixed; top: 10px; left: 10px; right: 10px; z-index: 9999;
-                background: white; border: 1px solid #ddd; border-radius: 6px;
-                padding: 10px 16px; display: flex; gap: 10px; justify-content: flex-end;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-              .toolbar button { background: #4f46e5; color: #fff; border: none; padding: 10px 20px;
-                border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
-              .toolbar button:hover { background: #4338ca; }
-              .toolbar .hint { font-size: 13px; color: #666; margin-right: auto; margin-top: 3px; }
-              iframe { width: 100vw; height: 100vh; border: none; display: block; }
-            </style>
-          </head>
-          <body>
-            <div class="toolbar">
-              <span class="hint">预览效果即最终 PDF 效果，点击下方按钮保存到本地</span>
-              <button type="button" onclick="downloadPdf()">下载 PDF</button>
-            </div>
-            <iframe src="${pdfDataUri}" id="pdfFrame"></iframe>
-            <script>
-              function downloadPdf() {
-                const link = document.createElement('a');
-                link.href = document.getElementById('pdfFrame').src;
-                link.download = '${fileName}';
-                document.body.append(link);
-                link.click();
-                link.remove();
-              }
-            </script>
-          </body>
-          </html>
-        `);
-        previewWin.document.close();
-      })
-      .catch(e => {
-        console.error('PDF 生成失败:', e);
-        alert('PDF 生成失败：' + (e.message || '未知错误'));
+      // 直接把整个 #wishlistExportPreview 区域绘制为图片，再写入 PDF，实现“预览即所得”
+      const canvas = await html2canvas(previewEl, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        // 页脚按钮区（下载/返回/取消）属于操作 UI，不应出现在 PDF 中
+        ignoreElements: (element) => element.classList?.contains('export-preview-footer'),
       });
+
+      // 按页面可用高度切片，每片一页
+      const scale = contentWidth / canvas.width;
+      const slicePxHeight = contentHeight / scale;
+      let top = 0;
+      let firstPage = true;
+      while (top < canvas.height) {
+        if (!firstPage) {
+          doc.addPage();
+        }
+        firstPage = false;
+
+        const bottom = Math.min(top + slicePxHeight, canvas.height);
+        const sliceHeight = bottom - top;
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceHeight;
+        const ctx = sliceCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, top, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+
+        const imgWidth = contentWidth;
+        const imgHeight = sliceHeight * scale;
+        doc.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgWidth, imgHeight);
+        top = bottom;
+      }
+
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10);
+      const fileName = `pouch-wishlist-export-${dateStr}.pdf`;
+
+      // 生成 Data URI 并在新标签页预览
+      const pdfDataUri = doc.output('datauristring');
+      const previewWin = window.open('', '_blank', 'width=1100,height=1500');
+      previewWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="zh-CN">
+        <head>
+          <meta charset="utf-8">
+          <title>PDF 预览 - ${fileName}</title>
+          <style>
+            body { margin: 0; padding: 0; background: #f5f5f5; font-family: sans-serif; }
+            .toolbar { position: fixed; top: 10px; left: 10px; right: 10px; z-index: 9999;
+              background: white; border: 1px solid #ddd; border-radius: 6px;
+              padding: 10px 16px; display: flex; gap: 10px; justify-content: flex-end;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+            .toolbar button { background: #4f46e5; color: #fff; border: none; padding: 10px 20px;
+              border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
+            .toolbar button:hover { background: #4338ca; }
+            .toolbar .hint { font-size: 13px; color: #666; margin-right: auto; margin-top: 3px; }
+            iframe { width: 100vw; height: 100vh; border: none; display: block; }
+          </style>
+        </head>
+        <body>
+          <div class="toolbar">
+            <span class="hint">预览效果即最终 PDF 效果，点击下方按钮保存到本地</span>
+            <button type="button" onclick="downloadPdf()">下载 PDF</button>
+          </div>
+          <iframe src="${pdfDataUri}" id="pdfFrame"></iframe>
+          <script>
+            function downloadPdf() {
+              const link = document.createElement('a');
+              link.href = document.getElementById('pdfFrame').src;
+              link.download = '${fileName}';
+              document.body.append(link);
+              link.click();
+              link.remove();
+            }
+          </script>
+        </body>
+        </html>
+      `);
+      previewWin.document.close();
+    } catch (e) {
+      console.error('PDF 生成失败:', e);
+      toast('PDF 生成失败：' + (e.message || '未知错误'), 'error');
+    }
   }
 
   function buildExportToolbar() {

@@ -2154,6 +2154,53 @@
   white-space: nowrap;
 }
 
+/* 心愿单导出预览条目内部布局 */
+.export-preview-item-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.export-preview-note {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-top: var(--sp-1);
+}
+.export-preview-status {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-top: var(--sp-1);
+}
+
+.export-preview-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: var(--sp-3) 0;
+}
+
+.export-preview-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-3);
+  font-size: var(--fs-md);
+}
+
+.export-preview-summary-value {
+  color: var(--text);
+  font-weight: var(--fw-medium);
+}
+
+.export-preview-summary-value.spent {
+  text-decoration: line-through;
+}
+
+.export-preview-summary-value.remaining {
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-lg);
+  color: var(--brand);
+}
+
 /* 导出预览中的按标签分组样式 */
 .export-pdf-tag-group {
   font-size: var(--fs-lg);

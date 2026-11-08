@@ -109,7 +109,7 @@
     </section>
 
     <!-- 条目列表 -->
-    <section class="card wishlist-list" aria-label="心愿条目列表">
+    <section class="card wishlist-list" id="wishlistList" aria-label="心愿条目列表">
       <div id="wishlistError" class="error-card" hidden></div>
       <ul class="wishlist-items" id="wishlistItems" role="list"></ul>
       <p class="empty-state" id="emptyState" hidden>还没有心愿，去添加一条吧</p>
@@ -122,6 +122,8 @@
   <!-- 共享模块 -->
   <!-- 页面脚本 -->
     <script src="/vendor/jspdf.umd.min.js"></script>
+    <!-- html2canvas：把导出预览区域整体绘制为图片再写入 PDF（本地引用，不访问 CDN） -->
+    <script src="/vendor/html2canvas.min.js"></script>
   <script type="module" src="/js/wishlist.js"></script>
 
   <footer class="site-footer">
