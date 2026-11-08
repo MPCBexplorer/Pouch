@@ -20,6 +20,7 @@
  */
 import { API } from '/js/api.js';
 import { formatCents, parseYuan } from '/js/shared/currency.js';
+import { toast } from '/js/dom.js';
 (async function () {
   'use strict';
 
@@ -35,14 +36,22 @@ import { formatCents, parseYuan } from '/js/shared/currency.js';
     wishAmount: document.getElementById('wishAmount'),
     wishNote: document.getElementById('wishNote'),
     quickAddBtn: document.getElementById('quickAddBtn'),
+    wishlistExportBtn: document.getElementById('wishlistExportBtn'),
     wishlistItems: document.getElementById('wishlistItems'),
     emptyState: document.getElementById('emptyState'),
-    wishlistError: document.getElementById('wishlistError')
+    wishlistError: document.getElementById('wishlistError'),
+    wishlistExportToolbar: document.getElementById('wishlistExportToolbar'),
+    wishlistExportPreview: document.getElementById('wishlistExportPreview'),
   };
 
   // 状态
   let items = [];
   let isLoading = false;
+
+  // 导出模式状态
+  let exportMode = false;
+  let previewMode = false;
+  let selectedIds = new Set();
 
   // ---- 工具函数 ----
 
@@ -67,6 +76,245 @@ import { formatCents, parseYuan } from '/js/shared/currency.js';
     const d = new Date(iso);
     return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
   }
+
+  /** 将 ArrayBuffer 转换为 base64 字符串，避免大文件展开参数溢出。 */
+  function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  // ============ 导出模式（导出功能） ============
+
+  function enterExportMode() {
+    exportMode = true;
+    previewMode = false;
+    selectedIds.clear();
+    els.quickAddBtn.disabled = true;
+    renderItems(items);
+  }
+
+  function exitExportMode() {
+    exportMode = false;
+    previewMode = false;
+    selectedIds.clear();
+    els.quickAddBtn.disabled = false;
+    renderItems(items);
+    els.wishlistExportToolbar.hidden = true;
+    els.wishlistExportPreview.hidden = true;
+    els.wishlistExportBtn.disabled = false;
+  }
+
+  function toggleSelect(id) {
+    if (selectedIds.has(id)) selectedIds.delete(id);
+    else selectedIds.add(id);
+    renderItems(items);
+  }
+
+  function selectAll() {
+    items.forEach(item => selectedIds.add(item.id));
+    renderItems(items);
+  }
+
+  function invertSelection() {
+    items.forEach(item => {
+      if (selectedIds.has(item.id)) selectedIds.delete(item.id);
+      else selectedIds.add(item.id);
+    });
+    renderItems(items);
+  }
+
+  function confirmSelection() {
+    previewMode = true;
+    renderPreview();
+  }
+
+  function renderPreview() {
+    const selectedItems = items.filter(item => selectedIds.has(item.id));
+    els.wishlistItems.replaceChildren();
+    els.emptyState.hidden = true;
+    els.wishlistExportToolbar.hidden = true;
+    els.wishlistExportPreview.hidden = false;
+    els.wishlistExportPreview.replaceChildren();
+
+    const preview = createElement('div', { class: 'export-preview' }, [
+      createElement('h3', { class: 'export-preview-title' }, [`导出预览（共 ${selectedItems.length} 条）`]),
+      createElement('div', { class: 'export-preview-list' }, selectedItems.map(item =>
+        createElement('div', { class: 'export-preview-item' }, [
+          createElement('span', { class: 'export-preview-title-text' }, [item.name]),
+          createElement('span', { class: 'export-preview-type' }, [`¥${formatCents(item.amountCents)}`]),
+        ])
+      )),
+      createElement('div', { class: 'export-preview-footer' }, [
+        createElement('button', { class: 'btn btn-primary', onClick: savePDF }, ['下载 PDF']),
+        createElement('button', { class: 'btn btn-ghost', onClick: () => { previewMode = false; renderItems(items); } }, ['返回重选']),
+        createElement('button', { class: 'btn btn-ghost', onClick: exitExportMode }, ['取消']),
+      ]),
+    ]);
+    els.wishlistExportPreview.appendChild(preview);
+  }
+
+  async function exportJSON() {
+    try {
+      const selectedItems = items.filter(item => selectedIds.has(item.id));
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10);
+      const blob = new Blob([JSON.stringify(selectedItems, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pouch-wishlist-export-${dateStr}.json`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast('JSON 导出成功', 'ok');
+    } catch (e) {
+      console.error('导出失败:', e);
+      alert('导出失败：' + (e.message || '未知错误'));
+    }
+  }
+
+  /** 生成 PDF 并在新标签页预览，用户可预览后再下载保存。 */
+  function savePDF() {
+    const selectedItems = items.filter(item => selectedIds.has(item.id));
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+
+    // 加载中文字体
+    fetch('/vendor/fonts/NotoSansSC-Regular.ttf')
+      .then(res => res.arrayBuffer())
+      .then(fontBuffer => {
+        const fontData = arrayBufferToBase64(fontBuffer);
+        const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF;
+        if (typeof jsPDFClass !== 'function') {
+          throw new Error('jsPDF constructor not found. window.jspdf=' + typeof window.jspdf + ', window.jsPDF=' + typeof window.jsPDF);
+        }
+        const doc = new jsPDFClass();
+        doc.addFileToVFS('NotoSansSC-Regular.ttf', fontData);
+        doc.addFont('NotoSansSC-Regular.ttf', 'NotoSansSC', 'normal');
+        doc.addFont('NotoSansSC-Regular.ttf', 'NotoSansSC', 'bold');
+        doc.setFont('NotoSansSC');
+
+        const margin = 20;
+        const maxWidth = doc.internal.pageSize.getWidth() - margin * 2;
+        let y = margin;
+
+        // 标题
+        doc.setFontSize(18);
+        doc.setFont('NotoSansSC', 'bold');
+        doc.text(`心愿单（共 ${selectedItems.length} 条）`, margin, y);
+        y += 12;
+
+        for (let i = 0; i < selectedItems.length; i++) {
+          const item = selectedItems[i];
+
+          // 检查是否需要新页
+          if (y > doc.internal.pageSize.height - 40) {
+            doc.addPage();
+            y = margin;
+          }
+
+          // 编号 + 名称
+          doc.setFontSize(12);
+          doc.setFont('NotoSansSC', 'bold');
+          doc.text(`${i + 1}. ${item.name}`, margin, y);
+          y += 6;
+
+          // 金额
+          doc.setFontSize(10);
+          doc.setFont('NotoSansSC', 'normal');
+          doc.text(`金额：¥${formatCents(item.amountCents)}`, margin, y);
+          y += 5;
+
+          // 备注
+          if (item.note) {
+            doc.setFontSize(10);
+            const noteLines = doc.splitTextToSize(`备注：${item.note}`, maxWidth);
+            for (const line of noteLines) {
+              doc.text(line, margin, y);
+              y += 5;
+            }
+          }
+
+          // 购买状态
+          const status = item.purchased ? '已购买' : '未购买';
+          doc.setFontSize(9);
+          doc.setFont('NotoSansSC', 'normal');
+          doc.text(`状态：${status}` + (item.purchasedAt ? `，购买于 ${formatDate(item.purchasedAt)}` : ''), margin, y);
+          y += 7;
+        }
+
+        const fileName = `pouch-wishlist-export-${dateStr}.pdf`;
+
+        // 生成 Data URI 并在新标签页预览
+        const pdfDataUri = doc.output('datauristring');
+        const previewWin = window.open('', '_blank', 'width=1100,height=1500');
+        previewWin.document.write(`
+          <!DOCTYPE html>
+          <html lang="zh-CN">
+          <head>
+            <meta charset="utf-8">
+            <title>PDF 预览 - ${fileName}</title>
+            <style>
+              body { margin: 0; padding: 0; background: #f5f5f5; font-family: sans-serif; }
+              .toolbar { position: fixed; top: 10px; left: 10px; right: 10px; z-index: 9999;
+                background: white; border: 1px solid #ddd; border-radius: 6px;
+                padding: 10px 16px; display: flex; gap: 10px; justify-content: flex-end;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+              .toolbar button { background: #4f46e5; color: #fff; border: none; padding: 10px 20px;
+                border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
+              .toolbar button:hover { background: #4338ca; }
+              .toolbar .hint { font-size: 13px; color: #666; margin-right: auto; margin-top: 3px; }
+              iframe { width: 100vw; height: 100vh; border: none; display: block; }
+            </style>
+          </head>
+          <body>
+            <div class="toolbar">
+              <span class="hint">预览效果即最终 PDF 效果，点击下方按钮保存到本地</span>
+              <button type="button" onclick="downloadPdf()">下载 PDF</button>
+            </div>
+            <iframe src="${pdfDataUri}" id="pdfFrame"></iframe>
+            <script>
+              function downloadPdf() {
+                const link = document.createElement('a');
+                link.href = document.getElementById('pdfFrame').src;
+                link.download = '${fileName}';
+                document.body.append(link);
+                link.click();
+                link.remove();
+              }
+            </script>
+          </body>
+          </html>
+        `);
+        previewWin.document.close();
+      })
+      .catch(e => {
+        console.error('PDF 生成失败:', e);
+        alert('PDF 生成失败：' + (e.message || '未知错误'));
+      });
+  }
+
+  function buildExportToolbar() {
+    return createElement('div', { class: 'export-toolbar' }, [
+      createElement('div', { class: 'export-toolbar-left' }, [
+        createElement('span', { class: 'export-count' }, [`已选 ${selectedIds.size} 条`]),
+      ]),
+      createElement('div', { class: 'export-toolbar-right' }, [
+        createElement('button', { class: 'btn btn-ghost', onClick: () => { selectAll(); renderItems(items); } }, ['全选']),
+        createElement('button', { class: 'btn btn-ghost', onClick: () => { invertSelection(); renderItems(items); } }, ['反选']),
+        createElement('button', { class: 'btn btn-primary', onClick: confirmSelection }, ['确定']),
+        createElement('button', { class: 'btn btn-ghost', onClick: exitExportMode }, ['取消']),
+      ]),
+    ]);
+  }
+
 
   function createElement(tag, props = {}, children = []) {
     const el = document.createElement(tag);
@@ -124,7 +372,20 @@ import { formatCents, parseYuan } from '/js/shared/currency.js';
     els.emptyState.hidden = true;
 
     list.forEach((item, idx) => {
-      const li = createElement('li', { class: 'wishlist-item', dataset: { id: item.id } });
+      const isSelected = selectedIds.has(item.id);
+      const li = createElement('li', { class: 'wishlist-item' + (exportMode ? ' export-mode' : ''), dataset: { id: item.id } });
+
+      // 导出选择复选框（仅在导出模式下显示）
+      const exportCheckbox = exportMode
+        ? createElement('label', { class: 'export-checkbox-label' }, [
+          createElement('input', {
+            type: 'checkbox',
+            class: 'export-checkbox',
+            checked: isSelected,
+            onChange: () => toggleSelect(item.id)
+          })
+        ])
+        : null;
 
       const nameEl = createElement('span', { class: 'wish-name' }, [item.name]);
       if (item.purchased) nameEl.classList.add('purchased');
@@ -166,7 +427,7 @@ import { formatCents, parseYuan } from '/js/shared/currency.js';
         onClick: () => confirmDelete(item)
       }, [createElement('span', { class: 'icon-del' }, ['🗑'])]);
 
-      // 复选框
+      // 购买状态复选框
       const checkbox = createElement('input', {
         type: 'checkbox',
         class: 'wish-checkbox',
@@ -179,13 +440,10 @@ import { formatCents, parseYuan } from '/js/shared/currency.js';
 
       actions.append(upBtn, downBtn, delBtn);
 
-      const row = createElement('div', { class: 'wish-row' }, [
-        checkboxLabel,
-        nameEl,
-        purchasedAtEl,
-        amountEl,
-        actions
-      ]);
+      const rowChildren = exportMode ? [exportCheckbox, checkboxLabel, nameEl, purchasedAtEl, amountEl, actions]
+        : [checkboxLabel, nameEl, purchasedAtEl, amountEl, actions];
+
+      const row = createElement('div', { class: 'wish-row' }, rowChildren);
 
       // 备注留在第二行；购买日期已在行内（金额左侧）
       if (noteEl) {
@@ -336,6 +594,14 @@ import { formatCents, parseYuan } from '/js/shared/currency.js';
   // 回车在金额框也提交
   els.wishAmount.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') handleQuickAdd(e);
+  });
+
+  // 导出按钮
+  els.wishlistExportBtn.addEventListener('click', () => {
+    els.wishlistExportBtn.disabled = true;
+    enterExportMode();
+    els.wishlistExportToolbar.hidden = false;
+    renderItems(items);
   });
 
   // 初始加载

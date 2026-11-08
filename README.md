@@ -114,6 +114,10 @@ Pouch uses the following third-party open-source libraries, see `NOTICE` file fo
 - Chart.js — MIT License (frontend charts)
 - marked — MIT License (frontend Markdown rendering)
 - DOMPurify — Mozilla Public License 2.0 (frontend HTML sanitization)
+- KaTeX — MIT License (frontend LaTeX math rendering, local files under web/vendor)
+- jsPDF — MIT License (frontend PDF generation, local file web/vendor/jspdf.umd.min.js)
+- Noto Sans SC — SIL Open Font License 1.1 (frontend CJK font, local file web/vendor/fonts/NotoSansSC-Regular.ttf)
+- html2canvas — MIT License (frontend PDF screenshot, local file web/vendor/html2canvas.min.js)
 
 ## Contributing
 

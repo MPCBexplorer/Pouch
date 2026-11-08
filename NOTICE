@@ -22,3 +22,15 @@ This product includes software developed by the following projects:
 - KaTeX Fonts (https://katex.org/)
   Licensed under SIL Open Font License 1.1
   本地文件：web/vendor/fonts/*.woff2, *.woff, *.ttf (v0.16.9)
+
+- jsPDF (https://github.com/MrRio/jsPDF)
+  Licensed under MIT License
+  本地文件：web/vendor/jspdf.umd.min.js (v2.5.1)
+
+- Noto Sans SC (https://fonts.google.com/noto/specimen/Noto+Sans+SC)
+  Licensed under SIL Open Font License 1.1
+  本地文件：web/vendor/fonts/NotoSansSC-Regular.ttf (v41)
+
+- html2canvas (https://html2canvas.hertzen.com/)
+  Licensed under MIT License
+  本地文件：web/vendor/html2canvas.min.js (v1.4.1)

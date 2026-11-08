@@ -58,17 +58,23 @@
         </header>
 
         <!-- 筛选栏 -->
-        <section class="card list-filterbar" aria-label="筛选条件">
+        <section class="card list-filterbar" id="filterbarCard" aria-label="筛选条件">
           <div class="filter-row" id="filterBar"></div>
           <div class="filter-chips" id="filterChips" hidden></div>
         </section>
 
+        <!-- 导出工具栏（选择模式下显示） -->
+        <div id="exportToolbar" class="export-toolbar-wrap" hidden></div>
+
         <!-- 列表视图 -->
-        <section class="card list-view" aria-label="记录列表">
+        <section class="card list-view" id="listviewCard" aria-label="记录列表">
           <div id="listError" class="error-card" hidden></div>
           <div class="list-body" id="listBody" role="list"></div>
           <div class="list-pager" id="listPager" hidden></div>
         </section>
+
+        <!-- 导出预览（预览模式下显示） -->
+        <div id="exportPreview" class="export-preview-wrap" hidden></div>
       </div>
     </div>
 
@@ -98,6 +104,9 @@
   <link rel="stylesheet" href="/vendor/katex.min.css">
   <script defer src="/vendor/katex.min.js"></script>
   <script src="/vendor/latex.js"></script>
+  <script src="/vendor/jspdf.umd.min.js"></script>
+  <!-- html2canvas：把导出预览区域整体绘制为图片再写入 PDF（本地引用，不访问 CDN） -->
+  <script src="/vendor/html2canvas.min.js"></script>
   <script type="module" src="/js/list.js"></script>
 
   <footer class="site-footer">

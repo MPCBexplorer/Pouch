@@ -120,7 +120,7 @@ export function renderWarnings(host, warnings) {
       el('strong', { text: '数据告警' }),
       el('ul', { children: warnings.map(w => el('li', { text: w })) }),
       el('p', { class: 'warn-hint',
-                text: '损坏的原文件已保留为 .corrupt，备份在 data/.backup/ 目录。详情见 docs/05 §5.6。' }),
+                text: '损坏的原文件已保留为 .corrupt，备份在 data/.backup/ 目录。' }),
     ]}),
     el('button', { class: 'link-btn', text: '知道了', on: { click: () => render(host, []) } }),
   ]}));

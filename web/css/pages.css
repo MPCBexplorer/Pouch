@@ -252,7 +252,42 @@
   text-overflow: ellipsis;
 }
 
-/* 购买日期：与金额同行、位于操作按钮左侧（曾放在 .wish-meta 第二行） */
+/* 心愿单头部工具栏（标题 + 导出按钮） */
+.wishlist-header-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-6);
+}
+
+.wishlist-header-toolbar h1 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+/* 导出选择复选框（心愿单导出模式） */
+.export-checkbox-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  margin-right: var(--sp-2);
+}
+
+.export-checkbox-label input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+/* 心愿单条目导出模式调整 */
+.wishlist-item.export-mode .wish-row {
+  gap: var(--sp-2);
+}
 .wish-purchased-at {
   color: var(--success);
   font-weight: var(--fw-medium);
@@ -2004,6 +2039,326 @@
   font-size: var(--fs-sm);
 }
 
+/* ============ 导出功能样式 ============ */
+
+/* 导出工具栏容器 */
+.export-toolbar-wrap {
+  margin-bottom: var(--sp-4);
+}
+
+.export-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.export-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1;
+}
+
+.export-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+}
+
+.export-count {
+  font-size: var(--fs-sm);
+  color: var(--text);
+  font-weight: var(--fw-medium);
+}
+
+/* 导出预览容器 */
+.export-preview-wrap {
+  margin-bottom: var(--sp-4);
+}
+
+.export-preview {
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.export-preview-title {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.export-preview-actions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.export-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  min-height: 200px;
+}
+
+.export-preview-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+
+.export-preview-item:hover {
+  background: var(--bg-hover);
+}
+
+.export-preview-title-text {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+}
+
+.export-preview-type {
+  flex: none;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.export-preview-footer {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.export-preview-timestamp {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-left: var(--sp-3);
+  white-space: nowrap;
+}
+
+/* 导出预览中的按标签分组样式 */
+.export-pdf-tag-group {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--brand);
+  margin: var(--sp-5) 0 var(--sp-3) 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--sp-1);
+}
+
+.export-pdf-sub-group {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+  margin: var(--sp-4) 0 var(--sp-2) var(--sp-4);
+  border-bottom: 1px dashed var(--border);
+  padding-bottom: var(--sp-1);
+}
+
+.export-pdf-item {
+  margin-bottom: var(--sp-2);
+  padding-left: var(--sp-6);
+  page-break-inside: avoid;
+}
+
+.export-pdf-title {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-normal);
+  color: black;
+  margin-bottom: var(--sp-1);
+}
+
+.export-pdf-item-num {
+  display: inline-block;
+  min-width: 2em;
+  font-weight: var(--fw-bold);
+  color: var(--brand);
+  margin-right: var(--sp-1);
+}
+
+.export-select {
+  margin: 0 var(--sp-2) 0 0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.export-pdf-content {
+  font-size: var(--fs-sm);
+  color: var(--text);
+  line-height: var(--lh-normal);
+  margin-bottom: var(--sp-2);
+}
+
+.export-pdf-date {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: var(--sp-1);
+}
+
+/* 列表行导出模式：增加复选框列 */
+.row.export-mode {
+  grid-template-columns: 40px 40px 1fr auto;
+}
+
+.export-row-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.export-row-checkbox input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+/* 打印模式（PDF 导出） */
+@media print {
+  .topbar, .site-footer, .list-sidebar, .list-filterbar,
+  .export-toolbar-wrap, .btn, .list-pager,
+  .theme-toggle, .repo-link, .modal, .modal-backdrop {
+    display: none !important;
+  }
+  .list-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .list-content {
+    margin: 0;
+    padding: 0;
+  }
+  .list-view {
+    border: none;
+    box-shadow: none;
+  }
+  .row {
+    border-bottom: 1px solid var(--border);
+    page-break-inside: avoid;
+  }
+  .row-main {
+    color: black;
+    text-decoration: none;
+  }
+  .row-title { color: black; }
+  .row-title span:last-child { color: black !important; }
+  .row-excerpt { color: black; }
+  .row-time { color: #666; }
+  body { background: white !important; }
+  .page { background: white !important; }
+
+  /* 当正在打印 PDF 预览时，只显示预览区域 */
+  body.printing-pdf .topbar,
+  body.printing-pdf .site-footer,
+  body.printing-pdf .list-sidebar,
+  body.printing-pdf .list-filterbar,
+  body.printing-pdf .export-toolbar-wrap,
+  body.printing-pdf .btn,
+  body.printing-pdf .list-pager,
+  body.printing-pdf .theme-toggle,
+  body.printing-pdf .repo-link,
+  body.printing-pdf .modal,
+  body.printing-pdf .modal-backdrop {
+    display: none !important;
+  }
+  body.printing-pdf .list-layout {
+    grid-template-columns: 1fr !important;
+  }
+  body.printing-pdf .list-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  body.printing-pdf .list-view {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  body.printing-pdf #exportPreview {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: var(--sp-4) !important;
+    background: white !important;
+    border: none !important;
+  }
+  body.printing-pdf #exportPreview .export-preview-title {
+    font-size: var(--fs-xl);
+    margin-bottom: var(--sp-4);
+  }
+  body.printing-pdf .export-pdf-tag-group {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-bold);
+    color: var(--brand);
+    margin: var(--sp-5) 0 var(--sp-3) 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: var(--sp-1);
+    page-break-after: avoid;
+  }
+  body.printing-pdf .export-pdf-sub-group {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    color: var(--text-muted);
+    margin: var(--sp-4) 0 var(--sp-2) var(--sp-4);
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: var(--sp-1);
+    page-break-after: avoid;
+  }
+  body.printing-pdf .export-pdf-item {
+    margin-bottom: var(--sp-2);
+    padding-left: var(--sp-6);
+    page-break-inside: avoid;
+  }
+  body.printing-pdf .export-pdf-title {
+    font-size: var(--fs-base);
+    font-weight: var(--fw-normal);
+    color: black;
+    margin-bottom: var(--sp-1);
+  }
+  body.printing-pdf .export-pdf-content {
+    font-size: var(--fs-sm);
+    color: black;
+    line-height: var(--lh-normal);
+    margin-bottom: var(--sp-2);
+  }
+  body.printing-pdf .export-pdf-item-num {
+    color: var(--brand);
+    font-weight: var(--fw-bold);
+  }
+  body.printing-pdf .export-pdf-date {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    margin-top: var(--sp-1);
+  }
+  body.printing-pdf h1, body.printing-pdf h2, body.printing-pdf h3, body.printing-pdf h4 {
+    color: black !important;
+  }
+  body.printing-pdf .page {
+    background: white !important;
+  }
+}
+
 .update-field-row .field-value {
   font-family: var(--font-num);
   font-size: var(--fs-sm);
@@ -2054,3 +2409,26 @@
 .update-result .btn-download {
   margin-left: var(--sp-3);
 }
+
+/* 心愿单打印模式（PDF 导出） */
+body.printing-pdf #wishlistExportPreview {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: var(--sp-4) !important;
+  background: white !important;
+  border: none !important;
+}
+body.printing-pdf #wishlistExportPreview .export-preview-title {
+  font-size: var(--fs-xl);
+  margin-bottom: var(--sp-4);
+}
+body.printing-pdf .wishlist-item {
+  border-bottom: 1px solid var(--border);
+  page-break-inside: avoid;
+  margin-bottom: var(--sp-2);
+}
+body.printing-pdf .wish-name { color: black !important; }
+body.printing-pdf .wish-amount { color: black !important; }
+body.printing-pdf .wish-note { color: black !important; }

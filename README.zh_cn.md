@@ -29,6 +29,10 @@ Pouch 使用以下开源第三方库，详见 `NOTICE` 文件：
 - Chart.js — MIT License（前端图表）
 - marked — MIT License（前端 Markdown 渲染）
 - DOMPurify — Mozilla Public License 2.0（前端 HTML sanitize）
+- KaTeX — MIT License（前端 LaTeX 数学公式渲染，本地文件在 web/vendor）
+- jsPDF — MIT License（前端 PDF 生成，本地文件 web/vendor/jspdf.umd.min.js）
+- Noto Sans SC — SIL Open Font License 1.1（前端 CJK 字体，本地文件 web/vendor/fonts/NotoSansSC-Regular.ttf）
+- html2canvas — MIT License（前端 PDF 截图，本地文件 web/vendor/html2canvas.min.js）
 
 ## 快速开始
 

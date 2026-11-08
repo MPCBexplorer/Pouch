@@ -46,7 +46,13 @@
   </header>
 
   <main class="page">
-    <h1>心愿单</h1>
+    <div class="wishlist-header-toolbar">
+      <h1>心愿单</h1>
+      <button type="button" class="btn btn-primary" id="wishlistExportBtn">导出</button>
+    </div>
+
+    <!-- 导出工具栏（选择模式下显示） -->
+    <div id="wishlistExportToolbar" class="export-toolbar-wrap" hidden></div>
 
     <!-- 三项汇总 + 进度条 -->
     <section class="card wishlist-summary" aria-label="心愿单汇总">
@@ -108,11 +114,15 @@
       <ul class="wishlist-items" id="wishlistItems" role="list"></ul>
       <p class="empty-state" id="emptyState" hidden>还没有心愿，去添加一条吧</p>
     </section>
+
+    <!-- 导出预览（预览模式下显示） -->
+    <div id="wishlistExportPreview" class="export-preview-wrap" hidden></div>
   </main>
 
   <!-- 共享模块 -->
   <!-- 页面脚本 -->
-    <script type="module" src="/js/wishlist.js"></script>
+    <script src="/vendor/jspdf.umd.min.js"></script>
+  <script type="module" src="/js/wishlist.js"></script>
 
   <footer class="site-footer">
     <div class="footer-content">

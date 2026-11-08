@@ -25,7 +25,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
   const els = {
     catNav: document.getElementById('catNav'),
     extraNav: document.getElementById('extraNav'),
-    listTitle: document.getElementById('listTitle'),
+listTitle: document.getElementById('listTitle'),
     filterBar: document.getElementById('filterBar'),
     filterChips: document.getElementById('filterChips'),
     listBody: document.getElementById('listBody'),
@@ -34,10 +34,14 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     newRecordModal: document.getElementById('newRecordModal'),
     newRecordForm: document.getElementById('newRecordForm'),
     modalBody: document.getElementById('modalBody'),
-    modalTitle: document.getElementById('modalTitle'),
+     modalTitle: document.getElementById('modalTitle'),
     modalSubmit: document.getElementById('modalSubmit'),
     modalBackdrop: document.getElementById('modalBackdrop'),
-  };
+  exportToolbar: document.getElementById('exportToolbar'),
+  exportPreview: document.getElementById('exportPreview'),
+  filterbarCard: document.getElementById('filterbarCard'),
+  listviewCard: document.getElementById('listviewCard'),
+};
 
   // ============ 状态管理 ============
   let CATEGORIES = [];
@@ -57,14 +61,566 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     pinned: null,
   };
 
-  /** 列表页正文是否完全渲染（Markdown+LaTeX）。关闭后使用经过 LaTeX 保护的纯文本摘要。 */
-  function isListFullRender() {
-    return localStorage.getItem('pouch.listFullRender') === 'true';
+/** 列表页正文是否完全渲染（Markdown+LaTeX）。关闭后使用经过 LaTeX 保护的纯文本摘要。 */
+function isListFullRender() {
+  return localStorage.getItem('pouch.listFullRender') === 'true';
+}
+
+// ============ 导出模式（导出功能） ============
+
+/** 提取当前筛选条件（不含分页）。 */
+function getExportFilters() {
+  return {
+    q: state.q,
+    tags: state.tags.join(','),
+    status: state.status,
+    pinned: state.pinned,
+    dueFrom: state.dueFrom,
+    dueTo: state.dueTo,
+    sort: state.sort,
+    order: state.order,
+  };
+}
+
+/** 分页获取全部符合当前筛选的记录。 */
+async function fetchAllFiltered() {
+  let allItems = [];
+  let page = 1;
+  const size = 1000;
+  while (true) {
+    const filters = { ...getExportFilters(), page, size };
+    const res = await API.listRecords(state.type, filters);
+    const items = res.items || [];
+    allItems.push(...items);
+    if (items.length < size) break;
+    page++;
+  }
+  return allItems;
+}
+
+function enterExportMode() {
+  exportMode = true;
+  previewMode = false;
+  selectedIds.clear();
+  reload();
+}
+
+function exitExportMode() {
+  exportMode = false;
+  previewMode = false;
+  selectedIds.clear();
+  reload();
+  els.filterbarCard.hidden = false;
+  els.listviewCard.hidden = false;
+}
+
+function toggleSelect(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+}
+
+function selectAllVisible() {
+  currentItems.forEach(r => selectedIds.add(r.id));
+}
+
+function invertSelection() {
+  currentItems.forEach(r => {
+    if (selectedIds.has(r.id)) selectedIds.delete(r.id);
+    else selectedIds.add(r.id);
+  });
+}
+
+async function confirmSelection() {
+  const allItems = await fetchAllFiltered();
+  const previewItems = allItems.filter(r => selectedIds.has(r.id));
+  previewMode = true;
+  renderPreview(previewItems);
+}
+
+/** 在预览区域直接渲染带 PDF 层次格式的内容（标签按 "/" 分层、标题粗体大号、内容小号、碎片知识无日期）。
+ * 分层规则：取每条记录的首个标签并按 "/" 拆分，第一段作为主标签分组键，
+ * 第二段（若存在）作为次级标签子分组键。无子标签时不显示次级组头。
+ * 条目编号为 主.条目（无子标签）或 主.子.条目（有子标签），如 1.2.3。 */
+function renderPreview(previewItems) {
+  const cat = catOf(state.type);
+
+  // 按首个标签的 "/" 分段建立两层层级：主标签 -> 次级标签 -> 条目[]
+  const hierarchy = new Map();
+  for (const r of previewItems) {
+    const tags = r.tags || [];
+    const firstTag = tags[0] || '';
+    const parts = firstTag.split('/').map(p => p.trim()).filter(Boolean);
+    const mainTag = parts[0] || '(无标签)';
+    if (!hierarchy.has(mainTag)) hierarchy.set(mainTag, new Map());
+    const subMap = hierarchy.get(mainTag);
+    const subTag = parts[1] || null;
+    const key = subTag ? subTag : '(无子标签)';
+    if (!subMap.has(key)) subMap.set(key, []);
+    subMap.get(key).push({ record: r, hasSub: !!subTag });
   }
 
-  let isLoading = false;
-  let currentItems = [];
-  let modalTags = [];        // 新建模态框里已选标签（input + datalist 组合框，支持 / 建子标签）
+  const catLabel = cat ? cat.label : '记录';
+
+  render(els.listBody, []);
+  els.listPager.hidden = true;
+  els.filterBar.hidden = true;
+  els.exportToolbar.hidden = true;
+  els.filterbarCard.hidden = true;
+  els.listviewCard.hidden = true;
+  els.exportPreview.hidden = false;
+
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+  const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const previewTitle = el('h3', { class: 'export-preview-total', children: [
+    el('span', { text: `${catLabel}（共 ${previewItems.length} 条）` }),
+    el('span', { class: 'export-preview-timestamp', text: `  导出于 ${dateStr} ${timeStr}` }),
+  ]});
+
+  const groupNodes = [];
+  let groupNum = 0;
+  for (const [mainTag, subMap] of hierarchy) {
+    groupNum++;
+    const mainItemCount = Array.from(subMap.values()).reduce((sum, items) => sum + items.length, 0);
+    const tagHeader = el('h4', { class: 'export-pdf-tag-group', text: `${groupNum}. ${mainTag}（共 ${mainItemCount} 条）` });
+
+    const subNodes = [];
+    let subNum = 0;
+    for (const [subTagKey, entries] of subMap) {
+      const hasSub = entries.every(e => e.hasSub);
+      subNum++;
+
+      const itemNodes = entries.map(({ record: r }, itemIdx) => {
+        const itemNum = itemIdx + 1;
+        const itemNumStr = hasSub ? `${groupNum}.${subNum}.${itemNum}` : `${groupNum}.${itemNum}`;
+        const isKnowledge = r.type === 'knowledge';
+        const titleHtml = renderLatexText(r.title);
+        const contentHtml = r.content ? renderMarkdown(r.content) : '';
+        const dateHtml = isKnowledge ? '' : `<div class="export-pdf-date">${relTime(r.updatedAt)}</div>`;
+        return el('div', { class: 'export-pdf-item', children: [
+          el('div', { class: 'export-pdf-title', html: `<span class="export-pdf-item-num">${itemNumStr}.</span> ${titleHtml}` }),
+          contentHtml ? el('div', { class: 'export-pdf-content', html: contentHtml }) : null,
+          dateHtml ? el('div', { class: 'export-pdf-date' }, [el('span', { text: dateHtml })]) : null,
+        ]});
+      });
+
+      if (hasSub) {
+        const subItemCount = entries.length;
+        const subHeader = el('div', { class: 'export-pdf-sub-group', text: `  ${groupNum}.${subNum}. ${subTagKey}（共 ${subItemCount} 条）` });
+        subNodes.push(subHeader, ...itemNodes);
+      } else {
+        subNodes.push(...itemNodes);
+      }
+    }
+    groupNodes.push(tagHeader, ...subNodes);
+  }
+
+  render(els.exportPreview, frag([
+    previewTitle,
+    el('div', { class: 'export-preview-list', children: groupNodes }),
+    el('div', { class: 'export-preview-footer', children: [
+      el('button', { class: 'btn btn-primary', text: '下载 PDF', on: { click: savePDF } }),
+      el('button', { class: 'btn btn-ghost', text: '返回重选', on: { click: () => { previewMode = false; reload(); } } }),
+      el('button', { class: 'btn btn-ghost', text: '取消', on: { click: exitExportMode } }),
+    ]}),
+  ]));
+}
+
+/** 按标签分组（取第一个标签作为分组键）。 */
+function groupByTag(items) {
+  const groups = {};
+  for (const r of items) {
+    const tag = (r.tags && r.tags[0]) || '(无标签)';
+    if (!groups[tag]) groups[tag] = [];
+    groups[tag].push(r);
+  }
+  return groups;
+}
+
+async function exportJSON() {
+  try {
+    const allItems = await fetchAllFiltered();
+    const filtered = allItems.filter(r => selectedIds.has(r.id));
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const blob = new Blob([JSON.stringify(filtered, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = el('a', { href: url, download: `pouch-export-${dateStr}.json`, attrs: { style: 'display:none' } });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast('JSON 导出成功', 'ok');
+  } catch (e) {
+    toast('导出失败：' + (e.message || '未知错误'), 'error');
+  }
+}
+
+/** 将 ArrayBuffer 转换为 base64 字符串，避免大文件展开参数溢出。 */
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/** 将一段纯文本（可能含行内 Markdown `**粗体**` `*斜体*` `` `代码` `` 以及行首的块级标记 `#` / `-` / `1.` / `>`）渲染进 PDF。
+ * 返回更新后的 y。只依赖已注册的 NotoSansSC normal/bold 字体，斜体与等宽退化为 normal，
+ * 但标记本身会被去掉，不会以源码形式泄露进 PDF。 */
+function renderPlainText(plainText, doc, margin, y, maxWidth) {
+  if (!plainText || !plainText.trim()) return y;
+
+  // 按原始换行拆分，使行首的块级标记（标题/列表/引用）能被逐行识别
+  const lines = plainText.split('\n');
+  let paraStarted = false;
+  for (const line of lines) {
+    if (!line.trim()) { paraStarted = false; y += 2; continue; } // 空行 = 段落间距
+
+    let body = line;
+    let size = 10;
+    let blockBold = false;
+    let prefix = '';
+
+    // 行首块级 Markdown：标题 / 无序列表 / 有序列表 / 引用
+    const heading = line.match(/^(#{1,6})\s+(.*)$/s);
+    if (heading) {
+      blockBold = true;
+      size = Math.max(8, 13 - heading[1].length); // h1≈13 … h6≈8
+      body = heading[2];
+    } else if (/^[-*+]\s/.test(line)) {
+      prefix = '• ';
+      body = line.replace(/^[-*+]\s+/, '');
+    } else if (/^\d+\.\s/.test(line)) {
+      prefix = (line.match(/^\d+\./)[0] || '') + ' ';
+      body = line.replace(/^\d+\.\s+/, '');
+    } else if (/^>\s/.test(line)) {
+      body = line.replace(/^>\s+/, '');
+    }
+
+    // 行内 Markdown → 样式运行，去掉标记但保留粗体语义
+    const runs = [];
+    let rest = body;
+    let last = 0;
+    const tokenRe = /\*\*(.+?)\*\*|\*(.+?)\*|\`(.+?)\`/g;
+    tokenRe.lastIndex = 0;
+    let t;
+    while ((t = tokenRe.exec(rest))) {
+      if (t.index > last) runs.push({ text: rest.slice(last, t.index), bold: false });
+      if (t[1] !== undefined) runs.push({ text: t[1], bold: true });     // **粗体**
+      else if (t[2] !== undefined) runs.push({ text: t[2], bold: false }); // *斜体*
+      else runs.push({ text: t[3], bold: false });                          // `代码`
+      last = t.index + t[0].length;
+    }
+    if (last < rest.length) runs.push({ text: rest.slice(last), bold: false });
+
+    // 合并相邻同样式运行
+    const merged = [];
+    for (const run of runs) {
+      const prev = merged[merged.length - 1];
+      if (prev && prev.bold === run.bold) prev.text += run.text;
+      else merged.push({ text: run.text, bold: run.bold });
+    }
+
+    paraStarted = false;
+    for (const run of merged) {
+      if (!run.text.trim()) continue;
+      doc.setFontSize(size);
+      doc.setFont('NotoSansSC', blockBold || run.bold ? 'bold' : 'normal');
+      const subLines = doc.splitTextToSize(run.text, maxWidth);
+      for (const subLine of subLines) {
+        const display = (!paraStarted && prefix) ? prefix + subLine : subLine;
+        doc.text(display, margin, y);
+        y += 5;
+        paraStarted = true;
+      }
+    }
+  }
+  return y + 4;
+}
+
+async function renderTextWithLatexToPdfFragments(text, doc, margin, y, maxWidth) {
+  if (!text) return y;
+
+  console.log('[renderTextWithLatexToPdfFragments] 开始渲染:', text);
+
+  // 将文本按 LaTeX 公式分段：$$...$$ 块公式优先，然后 $...$ 行内公式
+  const allMatches = [];
+  let m;
+  const blockRe = /\$\$([\s\S]*?)\$\$/g;
+  blockRe.lastIndex = 0;
+  while ((m = blockRe.exec(text))) {
+    allMatches.push({ start: m.index, end: m.index + m[0].length, type: 'block', content: m[1] });
+  }
+  const inlineRe = /\$([^\$]+?)\$/g;
+  inlineRe.lastIndex = 0;
+  while ((m = inlineRe.exec(text))) {
+    allMatches.push({ start: m.index, end: m.index + m[0].length, type: 'inline', content: m[1] });
+  }
+  // 按位置排序
+  allMatches.sort((a, b) => a.start - b.start);
+
+  // 去重
+  const uniqueMatches = [];
+  for (const match of allMatches) {
+    let overlapped = false;
+    for (const u of uniqueMatches) {
+      if (match.start < u.end && match.end > u.start) {
+        overlapped = true;
+        break;
+      }
+    }
+    if (!overlapped) uniqueMatches.push(match);
+  }
+
+  console.log('[renderTextWithLatexToPdfFragments] 匹配到公式:', uniqueMatches);
+
+  let lastEnd = 0;
+  for (const match of uniqueMatches) {
+    // 渲染公式前的普通文本
+    if (match.start > lastEnd) {
+      const plainText = text.slice(lastEnd, match.start);
+      if (plainText.trim()) {
+        y = renderPlainText(plainText, doc, margin, y, maxWidth);
+      }
+    }
+
+    // 渲染 LaTeX 公式
+    const latexContent = match.content;
+    const displayMode = match.type === 'block';
+    console.log('[renderTextWithLatexToPdfFragments] 渲染公式:', latexContent, 'displayMode:', displayMode);
+
+    // 检查 katex 是否可用
+    if (!window.katex) {
+      console.error('[renderTextWithLatexToPdfFragments] window.katex 未定义!');
+      doc.setFontSize(9);
+      doc.setFont('NotoSansSC', 'normal');
+      doc.setTextColor('#4f46e5');
+      const lines = doc.splitTextToSize('\$' + latexContent + '\$', maxWidth);
+      for (const line of lines) {
+        doc.text(line, margin, y);
+        y += 5;
+      }
+      doc.setTextColor('#000000');
+      lastEnd = match.end;
+      continue;
+    }
+
+    try {
+      // 使用 KaTeX 渲染为 SVG，并把纯净的 <svg> 元素以图像形式绘制进 PDF。
+      // renderToString() 可能返回带 <span class="katex"> 包装的 HTML，必须从 DOM 中取出纯 svg。
+      // 使用 Blob URL（而非 data:image/svg+xml;base64）可完整保留 UTF-8 字节，避免
+      // btoa() 对非 Latin-1 字符抛出 DOMException，也避免 data URI 的命名空间问题。
+      let svgString = '';
+      try {
+        const katexHtml = window.katex.renderToString(latexContent, {
+          throwOnError: false,
+          displayMode: displayMode
+        });
+        const temp = document.createElement('div');
+        temp.innerHTML = katexHtml;
+        const svgEl = temp.querySelector('svg');
+        if (svgEl) {
+          // 确保作为独立图像文档能被浏览器正确解码
+          if (!svgEl.getAttribute('xmlns')) {
+            svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+          }
+          const imgWidth = Math.min(maxWidth, 200);
+          const imgHeight = Math.max(1, Math.round(imgWidth * 0.4));
+          if (!svgEl.getAttribute('width')) svgEl.setAttribute('width', String(imgWidth));
+          if (!svgEl.getAttribute('height')) svgEl.setAttribute('height', String(imgHeight));
+          if (!svgEl.getAttribute('viewBox')) {
+            svgEl.setAttribute('viewBox', `0 0 ${imgWidth} ${imgHeight}`);
+          }
+          svgString = svgEl.outerHTML;
+        }
+      } catch (e) {
+        // KaTeX 渲染失败，公式将被跳过（不以原始 $...$ 源码泄露进 PDF）
+      }
+
+      if (svgString) {
+        const imgWidth = Math.min(maxWidth, 200);
+        const imgHeight = Math.max(1, Math.round(imgWidth * 0.4));
+        const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = () => reject(new Error('svg image load failed'));
+          img.src = url;
+        });
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement('canvas');
+        canvas.width = imgWidth;
+        canvas.height = imgHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
+        doc.addImage(canvas.toDataURL('image/png'), 'PNG', margin, y, imgWidth, imgHeight);
+        y += imgHeight + 4;
+      }
+      // svg 为空时不降级为文本：避免将原始 $...$/$$...$$ 源码泄露进 PDF
+    } catch (e) {
+      console.error('[renderTextWithLatexToPdfFragments] 渲染公式出错:', e);
+      // 不降级为文本，公式在此处被跳过
+    }
+
+    lastEnd = match.end;
+  }
+
+  // 渲染剩余普通文本
+  if (lastEnd < text.length) {
+    const plainText = text.slice(lastEnd);
+    if (plainText.trim()) {
+      y = renderPlainText(plainText, doc, margin, y, maxWidth);
+    }
+  }
+
+  return y + 3;
+}
+
+async function savePDF() {
+  try {
+    const previewEl = els.exportPreview;
+    if (!previewEl) {
+      throw new Error('找不到导出预览区域 #exportPreview');
+    }
+
+    const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF;
+    if (typeof jsPDFClass !== 'function') {
+      throw new Error('jsPDF constructor not found.');
+    }
+    const doc = new jsPDFClass();
+
+    const margin = 20;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const contentWidth = pageWidth - margin * 2;
+    const contentHeight = pageHeight - margin * 2;
+
+    // 直接把整个 #exportPreview 区域（含已渲染的 Markdown 与 KaTeX 公式）绘制为图片，
+    // 再写入 PDF，实现“预览即所得”，避免 jsPDF 逐段绘制导致公式/Markdown 丢失。
+    const canvas = await html2canvas(previewEl, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      // 页脚按钮区（下载/返回/取消）属于操作 UI，不应出现在 PDF 中
+      ignoreElements: (element) => element.classList?.contains('export-preview-footer'),
+    });
+
+    // 按页面可用高度切片，每片一页
+    const scale = contentWidth / canvas.width;
+    const slicePxHeight = contentHeight / scale; // 每页对应的 canvas 像素高度
+    let top = 0;
+    let firstPage = true;
+    while (top < canvas.height) {
+      if (!firstPage) {
+        doc.addPage();
+      }
+      firstPage = false;
+
+      const bottom = Math.min(top + slicePxHeight, canvas.height);
+      const sliceHeight = bottom - top;
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = sliceHeight;
+      const ctx = sliceCanvas.getContext('2d');
+      ctx.drawImage(canvas, 0, top, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+
+      // 按实际比例绘制，避免最后一页不足时被拉伸变形
+      const imgWidth = contentWidth;
+      const imgHeight = sliceHeight * scale;
+      doc.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgWidth, imgHeight);
+      top = bottom;
+    }
+
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const cat = catOf(state.type);
+    const fileName = `pouch-export-${cat ? cat.label : 'record'}-${dateStr}.pdf`;
+
+    // 生成 Data URI 并在新标签页预览
+    const pdfDataUri = doc.output('datauristring');
+    const previewWin = window.open('', '_blank', 'width=1100,height=1500');
+    previewWin.document.write(`
+      <!DOCTYPE html>
+      <html lang="zh-CN">
+      <head>
+        <meta charset="utf-8">
+        <title>PDF 预览 - ${fileName}</title>
+        <style>
+          body { margin: 0; padding: 0; background: #f5f5f5; font-family: sans-serif; }
+          .toolbar { position: fixed; top: 10px; left: 10px; right: 10px; z-index: 9999;
+            background: white; border: 1px solid #ddd; border-radius: 6px;
+            padding: 10px 16px; display: flex; gap: 10px; justify-content: flex-end;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+          .toolbar button { background: #4f46e5; color: #fff; border: none; padding: 10px 20px;
+            border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
+          .toolbar button:hover { background: #4338ca; }
+          .toolbar .hint { font-size: 13px; color: #666; margin-right: auto; margin-top: 3px; }
+          iframe { width: 100vw; height: 100vh; border: none; display: block; }
+        </style>
+      </head>
+      <body>
+        <div class="toolbar">
+          <span class="hint">预览效果即最终 PDF 效果，点击下方按钮保存到本地</span>
+          <button type="button" onclick="downloadPdf()">下载 PDF</button>
+        </div>
+        <iframe src="${pdfDataUri}" id="pdfFrame"></iframe>
+        <script>
+          function downloadPdf() {
+            const link = document.createElement('a');
+            link.href = document.getElementById('pdfFrame').src;
+            link.download = '${fileName}';
+            document.body.append(link);
+            link.click();
+            link.remove();
+          }
+        </script>
+      </body>
+      </html>
+    `);
+    previewWin.document.close();
+  } catch (e) {
+    console.error('PDF 生成失败:', e);
+    alert('PDF 生成失败：' + (e.message || '未知错误'));
+  }
+
+}
+
+function buildExportToolbar() {
+  return el('div', { class: 'export-toolbar', children: [
+    el('div', { class: 'export-toolbar-left', children: [
+      el('span', { class: 'export-count', text: `已选 ${selectedIds.size} 条` }),
+    ]}),
+    el('div', { class: 'export-toolbar-right', children: [
+      el('button', { class: 'btn btn-ghost', text: '全选', on: { click: () => { selectAllVisible(); reload(); } } }),
+      el('button', { class: 'btn btn-ghost', text: '反选', on: { click: () => { invertSelection(); reload(); } } }),
+      el('button', { class: 'btn btn-primary', text: '确定', on: { click: confirmSelection } }),
+      el('button', { class: 'btn btn-ghost', text: '取消', on: { click: exitExportMode } }),
+    ]}),
+  ]});
+}
+
+function exportButton() {
+  return el('button', {
+    type: 'button',
+    class: 'btn btn-primary',
+    text: '导出',
+    on: { click: enterExportMode }
+  });
+}
+
+let isLoading = false;
+let currentItems = [];
+let modalTags = [];        // 新建模态框里已选标签
+
+// 导出模式状态
+let exportMode = false;
+let previewMode = false;
+let selectedIds = new Set();
 
   // ============ 工具函数 ============
   function showError(message) {
@@ -132,7 +688,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     else history.pushState(null, '', url);
   }
 
-  // ============ 筛选栏构建 ============
+ // ============ 筛选栏构建 ============
   function searchInput() {
     return el('input', {
       type: 'search',
@@ -144,6 +700,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
         keydown: e => { if (e.key === 'Enter') { e.preventDefault(); state.q = e.target.value; state.page = 1; reload(); } }
       }
     });
+
   }
 
   function statusSelect(cat) {
@@ -289,15 +846,36 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     });
   }
 
-  function buildFilters() {
-    const cat = catOf(state.type);
-    const parts = [searchInput(), statusSelect(cat), tagSelect()];
+function buildFilters() {
+  const cat = catOf(state.type);
+  const parts = [searchInput(), statusSelect(cat), tagSelect()];
 
-    if (cat.fields.includes('dueDate')) parts.push(dueRangeInputs());
+  if (cat.fields.includes('dueDate')) parts.push(dueRangeInputs());
 
-    parts.push(sortSelect(), orderSelect(), sizeSelect(), pinnedSelect(), newButton());
-    render(els.filterBar, frag(parts));
+  parts.push(sortSelect(), orderSelect(), sizeSelect(), pinnedSelect());
+
+  if (previewMode) {
+    render(els.filterBar, []);
+    els.filterBar.hidden = true;
+    els.exportToolbar.hidden = true;
+    els.exportPreview.hidden = false;
+    return;
   }
+
+  els.filterBar.hidden = false;
+if (exportMode) {
+    parts.push(newButton());
+    render(els.filterBar, frag(parts));
+    render(els.exportToolbar, frag([buildExportToolbar()]));
+    els.exportToolbar.hidden = false;
+    els.exportPreview.hidden = true;
+  } else {
+    parts.push(newButton(), exportButton());
+ render(els.filterBar, frag(parts));
+    els.exportToolbar.hidden = true;
+    els.exportPreview.hidden = true;
+  }
+}
 
   function renderFilterChips() {
     const chips = [];
@@ -352,17 +930,28 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
 
   function recordRow(r) {
     const cat = catOf(r.type);
-    const row = el('article', {
-      class: ['row', `row-${r.type}`, r.pinned && 'is-pinned'],
-      style: { '--card-accent': `var(--cat-${r.type})` },
-      attrs: { 'data-id': r.id },
-      children: [
+    const isSelected = selectedIds.has(r.id);
+    const children = [];
+
+    if (exportMode) {
+      children.push(
+        el('label', { class: 'export-row-checkbox', children: [
+          el('input', {
+            type: 'checkbox',
+            checked: isSelected,
+            on: { change: () => toggleSelect(r.id) }
+          })
+        ]})
+      );
+}
+
+    children.push(
       statusControl(r, cat),
-      el('a', { class: 'row-main', href: detailUrl(r), children: [
+      el('a', { class: 'row-main', href: exportMode ? undefined : detailUrl(r), children: [
         el('h3', { class: 'row-title', children: [
           r.pinned ? el('span', { class: 'pin-mark', text: '置顶', attrs: { 'aria-label': '已置顶' } }) : null,
           el('span', { html: renderLatexText(r.title) }),
-        ]}),
+  ]}),
         r.content ? el('p', { class: 'row-excerpt', html: isListFullRender() ? renderMarkdown(r.content) : renderLatexText(excerpt(r.content, 150)) }) : null,
         el('div', { class: 'row-meta', children: [
           el('span', { class: ['badge', `badge-status-${r.status}`], text: statusLabel(cat, r.status) }),
@@ -370,10 +959,25 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
           r.tags.length > 4 ? el('span', { class: 'badge badge-tag', text: `+${r.tags.length - 4}` }) : null,
           r.dueDate ? dueBadge(r) : null,
           r.notes?.length ? el('span', { class: 'row-note-count', text: `${r.notes.length} 条笔记` }) : null,
-        ]}),
+          ]}),
       ]}),
       el('time', { class: 'row-time', text: relTime(r.updatedAt), attrs: { title: '更新于 ' + fullTime(r.updatedAt), datetime: r.updatedAt } }),
-    ]});
+    );
+
+    const row = el('article', {
+      class: ['row', `row-${r.type}`, r.pinned && 'is-pinned', exportMode && 'export-mode'],
+      style: { '--card-accent': `var(--cat-${r.type})` },
+      attrs: { 'data-id': r.id },
+      on: exportMode ? {
+        click: (e) => {
+          const tag = e.target.tagName;
+          if (tag === 'A' || tag === 'BUTTON' || tag === 'INPUT' || tag === 'LABEL') return;
+          if (e.target.closest('a, button, input, label')) return;
+          toggleSelect(r.id);
+        }
+      } : undefined,
+      children,
+});
 
     return row;
   }
@@ -507,8 +1111,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
     const cat = catOf(state.type);
     els.listTitle.textContent = cat ? cat.label : '列表';
   }
-
-  // ============ 左侧导航 ============
+// ============ 左侧导航 ============
   function renderSidebar() {
     // 四个类别
     const catItems = CATEGORIES.map(c => el('a', {
@@ -603,7 +1206,7 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
           })
         ]});
       }
-      return el('div', { class: 'form-field' , children: [
+ return el('div', { class: 'form-field' , children: [
         el('label', { attrs: { for: `modal-${f.name}` }, text: f.label }),
         el('input', {
           id: `modal-${f.name}`,
@@ -737,5 +1340,4 @@ import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLa
         : '初始化失败，请刷新重试');
     }
   }
-
-  boot();
+boot();
