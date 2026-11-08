@@ -37,7 +37,7 @@ const catOf = type => CATEGORIES.find(c => c.type === type);
 
 const SEEN_LIMIT = 50;                     // 已看队列上限，超过重开一轮（避免 exclude 过长）
 
-const CURRENT_VERSION = '-1.5.0';     // 与 build.ps1 -Version 及 settings.js 保持一致
+const CURRENT_VERSION = '1.5.0';     // 与 build.ps1 -Version 及 settings.js 保持一致
 
 /** 提取主版本号（去掉 +beta/+alpha/-rc 等预发布后缀）。 */
 function baseVersion(v) {
@@ -555,6 +555,7 @@ function renderStale(s) {
 }
 
 boot();
+
 
 
 
