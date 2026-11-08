@@ -108,7 +108,7 @@ async function confirmClear() {
 }
 
 /** 当前版本（与 build.ps1 -Version 保持一致，构建时可替换）。 */
-const CURRENT_VERSION = '1.3.0';
+const CURRENT_VERSION = '1.4.0+alpha';
 
 /** 提取主版本号（去掉 +beta/+alpha/-rc 等预发布后缀）。 */
 function baseVersion(v) {
@@ -236,6 +236,8 @@ function init() {
 }
 
 init();
+
+
 
 
 
