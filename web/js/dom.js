@@ -17,6 +17,8 @@
    dom.js —— DOM 构造与格式化工具
    ============================================================ */
 
+import { API } from '/js/api.js';
+
 /**
  * 创建元素。
  * @param {string} tag
@@ -223,7 +225,7 @@ export function renderMarkdown(src, images = []) {
                    'munderover', 'mmultiscripts', 'mfrac', 'mfenced', 'mstyle', 'mphantom',
                    'mpadded', 'mpadded', 'mtable', 'mtr', 'mlabeledtr', 'mtd', 'annotation-xml'],
     ALLOWED_ATTR: ['href', 'title', 'src', 'alt', 'class', 'id', 'xmlns', 'display'],
-    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|data|local-file):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
   });
   // 在 DOM 层面替换 LaTeX 占位符，避免 Markdown 解析器破坏占位符文本
   var temp = document.createElement('div');
@@ -254,3 +256,24 @@ export function renderLatexText(src) {
 }
 
 /** 学科路径拆分：'数学/线性代数' → ['数学','线性代数'] */
+
+/** 为容器内的 local-file: 链接绑定点击打开本地文件的行为。
+ * 点击后调用后端 /api/local-file/open，成功 toast 仅显示文件名，
+ * 失败 toast 显示错误原因并附带完整路径。 */
+export function bindLocalFileLinks(container) {
+  if (!container) return;
+  container.querySelectorAll('a[href^="local-file:"]').forEach(link => {
+    link.addEventListener('click', async e => {
+      e.preventDefault();
+      const raw = link.getAttribute('href') || '';
+      const path = raw.slice('local-file:'.length);
+      try {
+        const res = await API.openLocalFile(path);
+        toast(`已打开：${res.fileName || path.split(/[/\\]/).pop() || path}`, 'ok');
+      } catch (err) {
+        const msg = err?.data?.error?.message || err?.message || '未知错误';
+        toast(`打开失败：${msg}（${path}）`, 'error');
+      }
+    });
+  });
+}

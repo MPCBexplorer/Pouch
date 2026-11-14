@@ -16,6 +16,7 @@
 package com.pouch;
 
 import com.pouch.handler.Handler;
+import com.pouch.handler.LocalFileHandler;
 import com.pouch.handler.MetaHandler;
 import com.pouch.handler.StaticHandler;
 import com.pouch.model.Category;
@@ -116,6 +117,7 @@ public class PouchServer {
         RecordsHandler        rh   = new RecordsHandler(store);
         RecordsNoteHandler    rnh  = new RecordsNoteHandler(store);
         StorageHandler        sh   = new StorageHandler(store);
+        LocalFileHandler      lfh  = new LocalFileHandler();
         WishlistHandler       wh   = new WishlistHandler(store);
         StatsHandler          st   = new StatsHandler(store);
 
@@ -141,7 +143,8 @@ public class PouchServer {
                .register("GET",    "/api/stats/random",          (ex, pp) -> st.handle(ex, pp))
                .register("GET",    "/api/stats/stale",           (ex, pp) -> st.handle(ex, pp))
                .register("GET",    "/api/storage/info",          sh)
-               .register("POST",   "/api/storage/{action}",      sh);
+               .register("POST",   "/api/storage/{action}",      sh)
+               .register("GET",    "/api/local-file/open",       lfh);
 
         // ---- 启动 ----
         HttpServer server;

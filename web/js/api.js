@@ -189,6 +189,10 @@ const API = (function () {
   async function clearBackups() {
     return request('/api/storage/clear-backups', { method: 'POST' });
   }
+  /** 在系统默认程序中打开本地文件：GET /api/local-file/open?path=… */
+  async function openLocalFile(path) {
+    return request('/api/local-file/open' + qs({ path }));
+  }
 
   // Version check (GitHub API, no auth needed for public repos)
   async function checkVersion() {
@@ -254,6 +258,7 @@ const API = (function () {
     getStorageInfo,
     openDataFolder,
     clearBackups,
+    openLocalFile,
     // Version
     checkVersion,
     // ---- docs/03 §3.10 函数名别名（ES module 页面直接用这些名字）----

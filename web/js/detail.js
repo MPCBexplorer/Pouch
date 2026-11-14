@@ -26,7 +26,7 @@
  *   - 不用字符串拼接 HTML；唯一 DOM 注入入口是 dom.js 的 el({html})，且只喂 DOMPurify 净化后的 Markdown
  */
 import { API, LIMITS } from '/js/api.js';
-import { el, render, frag, excerpt, relTime, fullTime, toast, statusLabel, renderWarnings, errorCard, renderMarkdown, renderLatexText } from '/js/dom.js';
+import { el, render, frag, excerpt, relTime, fullTime, toast, statusLabel, renderWarnings, errorCard, renderMarkdown, renderLatexText, bindLocalFileLinks } from '/js/dom.js';
 
 // ============ 常量 ============
 
@@ -169,6 +169,7 @@ function renderGuide() {
 function renderContent() {
   if (!editing) {
     render(els.content, markdownNode(record.content, undefined, record.images || []));
+    bindLocalFileLinks(els.content);
     return;
   }
 
@@ -201,8 +202,12 @@ function renderContent() {
       el('label', { attrs: { for: 'edit-content' }, text: '正文' }),
       el('div', { class: 'edit-content-wrap', children: [
         inputs.content,
-        el('button', { type: 'button', class: 'btn btn-primary', id: 'edit-insert-image', text: '插入图片',
-                       on: { click: insertImage } }),
+        el('div', { class: 'edit-buttons', children: [
+          el('button', { type: 'button', class: 'btn btn-primary', id: 'edit-insert-image', text: '插入图片',
+                         on: { click: insertImage } }),
+          el('button', { type: 'button', class: 'btn btn-primary', id: 'edit-link-file', text: '链接文件',
+                         on: { click: linkFile } }),
+        ]}),
       ]}),
     ]}),
     el('div', { class: 'edit-hint', text: '支持 Markdown 语法。Ctrl+Enter 保存，Esc 取消。' }),
@@ -449,6 +454,93 @@ async function insertImage() {
   input.click();
 }
 
+/** 链接本地文件：弹出网页内路径输入框，用户输入完整路径后插入 [文件名](local-file:路径)。 */
+function linkFile() {
+  if (!editing || !inputs.content) return;
+
+  const backdrop = el('div', {
+    class: 'modal-backdrop',
+    style: {
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.45)',
+      zIndex: 1000,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }
+  });
+
+  const dialog = el('div', {
+    class: 'card',
+    style: {
+      padding: 'var(--sp-6)',
+      minWidth: '420px',
+      maxWidth: '90vw',
+      background: 'var(--bg-surface)',
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius-card)',
+      boxShadow: '0 8px 24px rgba(0,0,0,0.25)'
+    },
+    children: [
+      el('h3', { class: 'dialog-title', text: '链接本地文件', style: { marginTop: 0, marginBottom: 'var(--sp-4)', fontSize: 'var(--fs-md)' } }),
+      el('p', { class: 'dialog-hint', text: '请输入文件的完整路径，例如：C:/Users/张三/Documents/文档.pdf', style: { fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginBottom: 'var(--sp-4)' } }),
+      el('input', {
+        class: 'input input-text',
+        id: 'linkFilePathInput',
+        attrs: {
+          placeholder: 'C:/... 或 /home/.../文件名',
+          'aria-label': '文件路径'
+        },
+        style: { width: '100%', boxSizing: 'border-box', marginBottom: 'var(--sp-4)' }
+      }),
+      el('div', { class: 'dialog-actions', style: { display: 'flex', gap: 'var(--sp-2)', justifyContent: 'flex-end' }, children: [
+        el('button', {
+          type: 'button',
+          class: 'btn btn-ghost',
+          text: '取消',
+          on: { click: () => document.body.removeChild(backdrop) }
+        }),
+        el('button', {
+          type: 'button',
+          class: 'btn btn-primary',
+          id: 'linkFileConfirmBtn',
+          text: '确认插入',
+          on: { click: () => {
+            const inputEl = document.getElementById('linkFilePathInput');
+            const rawPath = inputEl.value.trim();
+            if (!rawPath) {
+              inputEl.focus();
+              return;
+            }
+            const displayName = rawPath.split(/[/\\]/).pop() || rawPath;
+            insertAtCursor(inputs.content, `[${displayName}](local-file:${rawPath})`);
+            toast('已插入文件链接', 'ok');
+            document.body.removeChild(backdrop);
+          } }
+        })
+      ]})
+    ]
+  });
+
+  backdrop.appendChild(dialog);
+  document.body.appendChild(backdrop);
+
+  const pathInput = document.getElementById('linkFilePathInput');
+  pathInput.focus();
+  pathInput.addEventListener('keydown', function onEnter(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('linkFileConfirmBtn').click();
+      pathInput.removeEventListener('keydown', onEnter);
+    }
+  });
+
+  backdrop.addEventListener('click', e => {
+    if (e.target === backdrop) document.body.removeChild(backdrop);
+  });
+}
+
 function confirmDiscard() {
   if (isDirty() && !confirm('放弃未保存的更改？')) return;
   exitEdit();
@@ -571,6 +663,7 @@ function renderNotes() {
       : el('ul', { class: 'note-list', children: notes.map(noteItem) }),
     noteComposer(),
   ]));
+  bindLocalFileLinks(els.notes);
 }
 
 function noteItem(n) {

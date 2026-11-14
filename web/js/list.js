@@ -19,7 +19,7 @@
  * 约束：不直接 fetch、不用字符串拼 HTML、只通过 DOM API 构造、错误卡片友好提示
  */
 import { API, LIMITS } from '/js/api.js';
-import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLabel, renderLatexText, renderMarkdown } from '/js/dom.js';
+import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLabel, renderLatexText, renderMarkdown, bindLocalFileLinks } from '/js/dom.js';
 
   // ============ 页面元素引用 ============
   const els = {
@@ -236,6 +236,7 @@ function renderPreview(previewItems) {
       el('button', { class: 'btn btn-ghost', text: '取消', on: { click: exitExportMode } }),
     ]}),
   ]));
+  bindLocalFileLinks(els.exportPreview);
 }
 
 /** 按标签分组（取第一个标签作为分组键）。 */
