@@ -1341,6 +1341,23 @@ if (exportMode) {
       if (v !== '') data[k] = v;
     }
     if (!data.title) { toast('标题不能为空'); return; }
+    // 若标签输入框有残留内容，将其作为新标签加入（无需按回车，点击创建即可）
+    const tagInput = els.modalBody.querySelector('#modal-tags-input');
+    if (tagInput && tagInput.value.trim()) {
+      const raw = tagInput.value.trim();
+      const v = String(raw).replace(/\s*\/\s*/g, '/').replace(/^\/+|\/+$/g, '');
+      if (v) {
+        const segs = v.split('/');
+        if (segs.length <= 3 && segs.every(s => s && s.length <= 24)) {
+          if (!modalTags.includes(v) && modalTags.length < LIMITS.tags) {
+            modalTags.push(v);
+          }
+          tagInput.value = '';
+        } else {
+          toast('标签每段 1~24 字符、最多 3 层（如 Java/并发）');
+        }
+      }
+    }
     if (modalTags.length) data.tags = [...modalTags];
 
     setLoading(true);
