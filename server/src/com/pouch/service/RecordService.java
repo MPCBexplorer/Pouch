@@ -23,17 +23,23 @@ import com.pouch.GsonUtil;
 import com.pouch.HttpError;
 import com.pouch.Requests;
 import com.pouch.model.Category;
+import com.pouch.model.ImageRef;
 import com.pouch.model.Note;
 import com.pouch.model.Record;
 import com.pouch.store.JsonStore;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.Base64;
 import java.util.*;
 
 public class RecordService {
     private final JsonStore store;
     public RecordService(JsonStore store) { this.store = store; }
+
+    /** 嵌入图片边界（与前端 LIMITS 一致）：最多 10 张，单张压缩后 base64 解码不超过 300 KB。 */
+    private static final int MAX_IMAGES = 10;
+    private static final long MAX_IMAGE_BYTES = 300L * 1024;
 
     // ---------- 校验（02 §2.2） ----------
 
@@ -105,6 +111,39 @@ public class RecordService {
                 }
             }
         }
+        // ---- 嵌入图片（图文分离，base64 内嵌于 images 字段，不与 content 混存） ----
+        if (present(body, "images")) {
+            JsonElement el = body.get("images");
+            if (!el.isJsonArray()) throw new HttpError(400, "invalid_images", "images 必须是数组");
+            JsonArray arr = el.getAsJsonArray();
+            if (arr.size() > MAX_IMAGES) throw new HttpError(400, "invalid_images", "图片最多 " + MAX_IMAGES + " 张");
+            JsonArray outArr = new JsonArray();
+            for (JsonElement item : arr) {
+                if (!item.isJsonObject()) throw new HttpError(400, "invalid_images", "图片项必须是对象");
+                JsonObject img = item.getAsJsonObject();
+                String id = Requests.str(img, "id");
+                if (id == null || id.isEmpty()) throw new HttpError(400, "invalid_images", "图片缺少 id");
+                String mime = Requests.str(img, "mime");
+                if (mime == null || !mime.startsWith("image/")) throw new HttpError(400, "invalid_images", "图片 mime 非法");
+                String data = Requests.str(img, "data");
+                if (data == null || data.isEmpty()) throw new HttpError(400, "invalid_images", "图片 data 缺失");
+                byte[] decoded;
+                try { decoded = Base64.getDecoder().decode(data); }
+                catch (IllegalArgumentException e) { throw new HttpError(400, "invalid_images", "图片 data 不是合法 base64"); }
+                if (decoded.length > MAX_IMAGE_BYTES) throw new HttpError(400, "invalid_images", "单张图片压缩后过大（上限 " + (MAX_IMAGE_BYTES / 1024) + " KB）");
+                JsonObject outImg = new JsonObject();
+                outImg.addProperty("id", id);
+                outImg.addProperty("mime", mime);
+                outImg.addProperty("size", decoded.length);
+                JsonElement w = img.get("width");
+                JsonElement h = img.get("height");
+                outImg.addProperty("width", (w != null && !w.isJsonNull()) ? w.getAsInt() : 0);
+                outImg.addProperty("height", (h != null && !h.isJsonNull()) ? h.getAsInt() : 0);
+                outImg.addProperty("data", data);
+                outArr.add(outImg);
+            }
+            out.add("images", outArr);
+        }
         return out;
     }
 
@@ -117,6 +156,22 @@ public class RecordService {
         if (v.has("source")) r.setSource(strOrNull(v.get("source")));
         if (v.has("dueDate")) r.setDueDate(strOrNull(v.get("dueDate")));
         if (v.has("priority")) r.setPriority(strOrNull(v.get("priority")));
+        if (v.has("images")) {
+            JsonArray arr = v.getAsJsonArray("images");
+            List<ImageRef> imgs = new ArrayList<>(arr.size());
+            for (JsonElement el : arr) {
+                JsonObject img = el.getAsJsonObject();
+                ImageRef ir = new ImageRef();
+                ir.setId(img.get("id").getAsString());
+                ir.setMime(img.get("mime").getAsString());
+                ir.setSize(img.get("size").getAsLong());
+                ir.setWidth(img.get("width").getAsInt());
+                ir.setHeight(img.get("height").getAsInt());
+                ir.setData(img.get("data").getAsString());
+                imgs.add(ir);
+            }
+            r.setImages(imgs);
+        }
     }
 
     private static String strOrNull(JsonElement e) { return e.isJsonNull() ? null : e.getAsString(); }

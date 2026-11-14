@@ -191,9 +191,16 @@ export function excerpt(md, maxLen = 120) {
   return plain.length > maxLen ? plain.slice(0, maxLen) + '…' : plain;
 }
 
-/** Markdown 只读渲染 + DOMPurify 净化。供首页/详情页等页面使用。 */
-export function renderMarkdown(src) {
+/** Markdown 只读渲染 + DOMPurify 净化。供首页/详情页等页面使用。
+ *  images：嵌入图片数组 [{id, mime, data}]，用于把正文里的 img:xxx 占位符换成 data URI。 */
+export function renderMarkdown(src, images = []) {
   if (!src || !src.trim()) return '';
+  const imgMap = new Map(images.map(img => [img.id, img]));
+  // 把 img:xxx 占位符换成真实 data URI（避免 DOMPurify 过滤未知 scheme）
+  const resolved = src.replace(/!\[([^\]]*)\]\(img:([^)]+)\)/g, (_, alt, id) => {
+    const ref = imgMap.get(id);
+    return ref ? `![${alt}](data:${ref.mime};base64,${ref.data})` : `![${alt}]()`;
+  });
   marked.setOptions({
     gfm: true,
     breaks: true,
@@ -204,7 +211,7 @@ export function renderMarkdown(src) {
     protect: function (s) { return s; },
   };
   // 保护 LaTeX 公式，避免被 Markdown 解析器破坏
-  var protectedSrc = latex.protect(src);
+  var protectedSrc = latex.protect(resolved);
   var raw = marked.parse(protectedSrc);
   // DOMPurify 净化
   var sanitized = DOMPurify.sanitize(raw, {
@@ -216,7 +223,7 @@ export function renderMarkdown(src) {
                    'munderover', 'mmultiscripts', 'mfrac', 'mfenced', 'mstyle', 'mphantom',
                    'mpadded', 'mpadded', 'mtable', 'mtr', 'mlabeledtr', 'mtd', 'annotation-xml'],
     ALLOWED_ATTR: ['href', 'title', 'src', 'alt', 'class', 'id', 'xmlns', 'display'],
-    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
   });
   // 在 DOM 层面替换 LaTeX 占位符，避免 Markdown 解析器破坏占位符文本
   var temp = document.createElement('div');

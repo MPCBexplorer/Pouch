@@ -88,9 +88,11 @@ async function boot() {
   bindComposeNav();
   bindThemeRedraw();
 
-  // 六路并发，不串行等待（验收：完整加载 <800ms）
+  // 先加载分类（统计卡片 renderStatCards 依赖 CATEGORIES），避免首次并发竞态导致 statCards 为空
+  await loadCategories();
+
+  // 其余路并发，不串行等待（验收：完整加载 <800ms）
   await Promise.allSettled([
-    loadCategories(),
     loadOverview(),
     loadWishSummary(),
     loadRandom('inspiration'),

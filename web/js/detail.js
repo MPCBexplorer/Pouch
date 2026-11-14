@@ -73,8 +73,8 @@ const catOf = (type) => CATEGORIES.find(c => c.type === type) || null;
 // ============ Markdown 渲染（docs/04 §4.8.2，本项目唯一 XSS 风险点） ============
 
 /** 正文/笔记的只读渲染节点。html 内容必经 DOMPurify 净化（el 的唯一注入入口）。 */
-function markdownNode(src, cls) {
-  const html = renderMarkdown(src);
+function markdownNode(src, cls, images = []) {
+  const html = renderMarkdown(src, images);
   if (!html) return el('p', { class: 'empty-hint', text: '（无正文）' });
   return el('div', { class: ['markdown', cls].filter(Boolean).join(' '), html });
 }
@@ -168,7 +168,7 @@ function renderGuide() {
 
 function renderContent() {
   if (!editing) {
-    render(els.content, markdownNode(record.content));
+    render(els.content, markdownNode(record.content, undefined, record.images || []));
     return;
   }
 
@@ -199,7 +199,11 @@ function renderContent() {
     ]}),
     el('div', { class: 'form-field', children: [
       el('label', { attrs: { for: 'edit-content' }, text: '正文' }),
-      inputs.content,
+      el('div', { class: 'edit-content-wrap', children: [
+        inputs.content,
+        el('button', { type: 'button', class: 'btn btn-primary', id: 'edit-insert-image', text: '插入图片',
+                       on: { click: insertImage } }),
+      ]}),
     ]}),
     el('div', { class: 'edit-hint', text: '支持 Markdown 语法。Ctrl+Enter 保存，Esc 取消。' }),
     el('div', { class: 'detail-extra', id: 'detailExtra' }),
@@ -316,7 +320,8 @@ function isDirty() {
       || !eq(draft.source, record.source)
       || !eq(draft.dueDate, record.dueDate)
       || !eq(draft.priority, record.priority)
-      || draft.type !== record.type;
+      || draft.type !== record.type
+      || JSON.stringify(draft.images ?? []) !== JSON.stringify(record.images ?? []);
 }
 
 /** 把输入框的当前值同步进草稿（草稿深拷贝是"暂存正在编辑的内容"，用户故事 41）。 */
@@ -351,7 +356,9 @@ async function save() {
   }
 
   const typeChanged = draft.type !== record.type;
-  const patch = { title: draft.title, content: draft.content };
+  // 若正文中已不再引用任何 img:xxx 图片占位符，清空 images（仅删除完整链接，避免部分字母误删）
+  if (!draft.content.match(/!\[[^\]]*\]\(img:[^)]+\)/g)) draft.images = [];
+  const patch = { title: draft.title, content: draft.content, images: draft.images || [] };
   // 专有字段只发目标类别认识的；空值显式传 null = 清空（docs/03 §3.0.4）
   for (const f of fieldsOf(draft.type)) {
     if (FIELD_EDITORS[f]) patch[f] = draft[f] || null;
@@ -371,6 +378,75 @@ async function save() {
   } finally {
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '保存'; }
   }
+}
+
+/** 向 textarea 光标位置插入文本，并触发 input 事件同步草稿。 */
+function insertAtCursor(textarea, text) {
+  const start = textarea.selectionStart ?? 0;
+  const end = textarea.selectionEnd ?? 0;
+  const value = textarea.value;
+  textarea.value = value.slice(0, start) + text + value.slice(end);
+  textarea.selectionStart = textarea.selectionEnd = start + text.length;
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+/** 图片压缩：file → 缩放（最长边 1600）→ WebP 0.85 → base64 纯字符串。 */
+async function compressImage(file) {
+  const MAX_BYTES = 5 * 1024 * 1024;   // 原始文件上限 5 MB
+  if (file.size > MAX_BYTES) throw new Error('图片过大，建议不超过 5 MB');
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      const maxSide = 1600;
+      if (width > maxSide || height > maxSide) {
+        const scale = Math.min(maxSide / width, maxSide / height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result;
+          const base64 = dataUrl.split(',')[1];
+          resolve({ mime: 'image/webp', size: blob.size, width, height, base64 });
+        };
+        reader.onerror = () => reject(new Error('图片读取失败'));
+        reader.readAsDataURL(blob);
+      }, 'image/webp', 0.85);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = () => reject(new Error('图片加载失败'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+/** 插入图片：选文件 → 压缩 → base64 → 插入 img:xxx 占位符 → 计入 draft.images。 */
+async function insertImage() {
+  if (!editing || !inputs.content) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = await compressImage(file);
+      const id = `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      draft.images = draft.images || [];
+      draft.images.push({ id, mime: data.mime, size: data.size, width: data.width, height: data.height, data: data.base64 });
+      insertAtCursor(inputs.content, `![图片](img:${id})`);
+      toast('图片已插入', 'ok');
+    } catch (err) {
+      toast('图片插入失败：' + (err.message || '未知错误'));
+    }
+  };
+  input.click();
 }
 
 function confirmDiscard() {
@@ -511,7 +587,7 @@ function noteItem(n) {
         el('button', { class: 'link-btn link-btn-danger', text: '删除', on: { click: () => removeNote(n) } }),
       ]}),
     ]}),
-    markdownNode(n.content, 'note-body'),
+    markdownNode(n.content, 'note-body', record.images || []),
   ]});
 }
 

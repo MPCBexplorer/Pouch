@@ -118,17 +118,28 @@ function exitExportMode() {
 function toggleSelect(id) {
   if (selectedIds.has(id)) selectedIds.delete(id);
   else selectedIds.add(id);
+  updateExportCount();
 }
 
-function selectAllVisible() {
-  currentItems.forEach(r => selectedIds.add(r.id));
+async function selectAllVisible() {
+  const all = await fetchAllFiltered();
+  all.forEach(r => selectedIds.add(r.id));
+  updateExportCount();
 }
 
-function invertSelection() {
-  currentItems.forEach(r => {
-    if (selectedIds.has(r.id)) selectedIds.delete(r.id);
-    else selectedIds.add(r.id);
-  });
+async function invertSelection() {
+  const all = await fetchAllFiltered();
+  const allIds = new Set(all.map(r => r.id));
+  for (const id of allIds) {
+    if (selectedIds.has(id)) selectedIds.delete(id);
+    else selectedIds.add(id);
+  }
+  updateExportCount();
+}
+
+function updateExportCount() {
+  const el = els.exportToolbar.querySelector('.export-count');
+  if (el) el.textContent = `已选 ${selectedIds.size} 条`;
 }
 
 async function confirmSelection() {
@@ -196,7 +207,7 @@ function renderPreview(previewItems) {
         const itemNumStr = hasSub ? `${groupNum}.${subNum}.${itemNum}` : `${groupNum}.${itemNum}`;
         const isKnowledge = r.type === 'knowledge';
         const titleHtml = renderLatexText(r.title);
-        const contentHtml = r.content ? renderMarkdown(r.content) : '';
+        const contentHtml = r.content ? renderMarkdown(r.content, r.images || []) : '';
         const dateHtml = isKnowledge ? '' : `<div class="export-pdf-date">${relTime(r.updatedAt)}</div>`;
         return el('div', { class: 'export-pdf-item', children: [
           el('div', { class: 'export-pdf-title', html: `<span class="export-pdf-item-num">${itemNumStr}.</span> ${titleHtml}` }),
@@ -222,7 +233,6 @@ function renderPreview(previewItems) {
     el('div', { class: 'export-preview-footer', children: [
       el('button', { class: 'btn btn-primary', text: '下载 PDF', on: { click: savePDF } }),
       el('button', { class: 'btn btn-ghost', text: '导出为 JSON', on: { click: exportJSON } }),
-      el('button', { class: 'btn btn-ghost', text: '返回重选', on: { click: () => { previewMode = false; reload(); } } }),
       el('button', { class: 'btn btn-ghost', text: '取消', on: { click: exitExportMode } }),
     ]}),
   ]));
@@ -625,8 +635,8 @@ function buildExportToolbar() {
       el('span', { class: 'export-count', text: `已选 ${selectedIds.size} 条` }),
     ]}),
     el('div', { class: 'export-toolbar-right', children: [
-      el('button', { class: 'btn btn-ghost', text: '全选', on: { click: () => { selectAllVisible(); reload(); } } }),
-      el('button', { class: 'btn btn-ghost', text: '反选', on: { click: () => { invertSelection(); reload(); } } }),
+      el('button', { class: 'btn btn-ghost', text: '全选', on: { click: async () => { await selectAllVisible(); reload(); } } }),
+      el('button', { class: 'btn btn-ghost', text: '反选', on: { click: async () => { await invertSelection(); reload(); } } }),
       el('button', { class: 'btn btn-primary', text: '确定', on: { click: confirmSelection } }),
       el('button', { class: 'btn btn-ghost', text: '取消', on: { click: exitExportMode } }),
     ]}),

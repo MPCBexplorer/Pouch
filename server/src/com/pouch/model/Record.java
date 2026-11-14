@@ -28,6 +28,7 @@ public class Record {
     private String type;
     private String title;
     private String content = "";
+    private List<ImageRef> images = new ArrayList<>(); // 嵌入图片（图文分离，base64 内嵌）
     private List<String> tags = new ArrayList<>();
     private List<Note> notes = new ArrayList<>();
     private String status;
@@ -48,6 +49,7 @@ public class Record {
     public String type()      { return type; }
     public String title()     { return title; }
     public String content()   { return content; }
+    public List<ImageRef> images() { return images; }
     public List<String> tags(){ return tags; }
     public List<Note> notes() { return notes; }
     public String status()    { return status; }
@@ -64,6 +66,7 @@ public class Record {
     public void setType(String v)      { type = v; }
     public void setTitle(String v)     { title = v; }
     public void setContent(String v)   { content = v; }
+    public void setImages(List<ImageRef> v) { images = v; }
     public void setTags(List<String> v){ tags = v; }
     public void setNotes(List<Note> v) { notes = v; }
     public void setStatus(String v)    { status = v; }

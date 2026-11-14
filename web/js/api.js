@@ -35,6 +35,9 @@ const LIMITS = {
   source: 200,
   wishName: 120,
   wishNote: 500,
+  // 嵌入图片（方案 A：WebP 压缩 + base64，图文分离存入 images 字段）
+  images: 10,           // 单条记录最多图片张数
+  imageBytes: 300 * 1024, // 单张图片压缩后 base64 解码字节上限（约 300 KB）
 };
 
 const API = (function () {

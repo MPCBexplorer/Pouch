@@ -980,11 +980,13 @@
 }
 
 .input-content {
+  width: 100%;
   min-height: 320px;
   resize: vertical;
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   line-height: var(--lh-normal);
+  box-sizing: border-box;
 }
 
 /* ---- Markdown 排版（docs/04 §4.8.2 渲染结果的样式） ---- */
@@ -2260,6 +2262,12 @@
   color: var(--text);
   line-height: var(--lh-normal);
   margin-bottom: var(--sp-2);
+}
+.export-pdf-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: var(--sp-2) 0;
 }
 
 .export-pdf-date {

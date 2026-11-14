@@ -182,7 +182,6 @@ import { toast } from '/js/dom.js';
       createElement('div', { class: 'export-preview-footer' }, [
         createElement('button', { class: 'btn btn-primary', onClick: savePDF }, ['下载 PDF']),
         createElement('button', { class: 'btn btn-ghost', onClick: exportJSON }, ['导出为 JSON']),
-        createElement('button', { class: 'btn btn-ghost', onClick: () => { previewMode = false; els.wishlistExportToolbar.hidden = false; els.wishlistList.hidden = false; renderItems(items); } }, ['返回重选']),
         createElement('button', { class: 'btn btn-ghost', onClick: exitExportMode }, ['取消']),
       ]),
     ]);
