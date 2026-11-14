@@ -16,14 +16,36 @@
 
 People often jot down many things, only to forget them later. These records are often scattered across various places or forgotten in some corner. They may be inspirations, questions, knowledge, or to-do items. Pouch is a single-user, locally-run learning record dashboard where data is persisted as plain JSON files. Zero build tools, zero frontend frameworks, zero runtime external requests. Pouch aims to help you better organize and manage these records. Pouch also includes a wishlist system for managing wish income and expenditure.
 
+- Backend: Java 21 + JDK `HttpServer`, third-party library only Gson
+- Frontend: Native HTML/CSS/JS, locally imported Chart.js / marked / DOMPurify
+
+## Features
+- Dashboard with six blocks aggregating data overview on the homepage — four-category total count cards, todo completion rate ring, wishlist three-item summary + progress bar, random recall (inspiration/knowledge independent viewed queues), fragmented knowledge composition ring, stale reminder Top N.
+- Supports inserting images in Markdown content. The frontend scales images (max side 1600px) + WebP lossy compression (quality 0.85) and embeds them as base64 into the record's `images` field, separated from the `content` text, without bloating the content. When rendering, `img:xxx` placeholders are replaced with `data:` URIs. Up to 10 images per record, each compressed image not exceeding 300 KB.
+- Automatic backup to `data/.backup/` before every data write (create/update/delete), keeping the most recent ~50 snapshots per file. On startup, if a data file is corrupted, it automatically attempts recovery from newest to oldest backup; the corrupted file is renamed to `.corrupt` and retained.
+- The server binds only to 127.0.0.1 and is not exposed to the public network, suitable for personal local use.
+
+## Export Function
+
+Pouch supports two export formats:
+
+### PDF Export
+Available on both the list page (`/list.html`) and wishlist page (`/wishlist.html`). Select entries, click **Export** to enter selection mode, then click **Download PDF** in the preview panel. The preview renders exactly what will appear in the PDF (WYSIWYG). The exported PDF includes an export timestamp and summary rows (wishlist includes Total / Spent / Remaining).
+
+### JSON Export & Import
+- **JSON Export**: On the list page and wishlist page, click **Export as JSON** to download the selected entries as a JSON file. The file name includes the category and date.
+- **JSON Import**: Click **Import JSON** next to the Export button to upload a previously exported JSON file. The system validates that entries belong to the current category before importing.
+
 ## Environment Requirements
 
 - JDK 21
 
 ## Quick Start
 
+Ordinary users only need to run `start.bat` in the folder.
+
 ```powershell
-# Compile and start
+# Compile + start
 powershell -ExecutionPolicy Bypass -File server\start.ps1
 ```
 
@@ -40,7 +62,7 @@ powershell -ExecutionPolicy Bypass -File server\build.ps1 -Version 2.0.0
 powershell -ExecutionPolicy Bypass -File server\run-bg.ps1
 ```
 
-### Start Parameters
+## Start Parameters
 
 `start.ps1` supports three parameters to override defaults, useful for testing with temporary data without polluting real data:
 
@@ -75,17 +97,6 @@ Each file contains `version` and file-level `updatedAt`. **Write backup**: befor
 | `/list.html?type=<category>` | List page: browse by category, filter (subject/tag/status/keyword/date/sort/pagination), inline status toggle, quick new record |
 | `/detail.html?id=<uuid>` | Detail page: Markdown read/edit, append-only notes, tag management, category change, status switch |
 | `/wishlist.html` | Wishlist: add/delete, mark purchased, ↑/↓ adjacent sorting, three-item summary |
-
-## Export
-
-Pouch supports exporting data in two formats:
-
-### PDF Export
-Available on both the list page (`/list.html`) and wishlist page (`/wishlist.html`). Select entries, click **Export** to enter selection mode, then click **Download PDF** in the preview panel. The preview renders exactly what will appear in the PDF. The exported PDF includes a timestamp and per-entry summary (total / spent / remaining).
-
-### JSON Export & Import
-- **JSON Export**: On the list page and wishlist page, click **Export as JSON** to download the selected entries as a JSON file. The file name includes the category and date.
-- **JSON Import**: Click **Import JSON** next to the Export button to upload a previously exported JSON file. The system validates that entries belong to the current category before importing.
 
 ## Common Troubleshooting
 
@@ -137,24 +148,3 @@ See `CONTRIBUTING.md` for how to report issues, submit pull requests, and follow
 ---
 
 Thank you for using Pouch! 🎉
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
