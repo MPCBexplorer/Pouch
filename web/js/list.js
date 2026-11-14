@@ -259,7 +259,7 @@ async function exportJSON() {
     const exportData = filtered.map(r => ({ ...r, type: r.type || state.type }));
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = el('a', { href: url, download: `pouch-export-${state.type}-${dateStr}.json`, attrs: { style: 'display:none' } });
+    const a = el('a', { href: url, download: `pouch-export-${state.type}-${filtered.length}-${dateStr}.json`, attrs: { style: 'display:none' } });
     document.body.append(a);
     a.click();
     a.remove();
