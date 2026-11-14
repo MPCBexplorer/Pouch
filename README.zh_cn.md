@@ -6,7 +6,7 @@
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 ![完全本地](https://img.shields.io/badge/完全本地-127.0.0.1-success?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.6.0--beta-success?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.6.0-success?style=flat-square)
 
 </div>
 
@@ -142,6 +142,7 @@ scripts/           约束检查脚本
 ---
 
 感谢您使用奚囊系统! 🎉
+
 
 
 
