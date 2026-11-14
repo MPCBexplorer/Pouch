@@ -197,7 +197,7 @@ import { toast } from '/js/dom.js';
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `pouch-wishlist-export-${dateStr}.json`;
+      a.download = `pouch-export-wishlist-${selectedItems.length}-${dateStr}.json`;
       a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
