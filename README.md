@@ -14,16 +14,17 @@
 
 ---
 
-People often jot down many things, only to forget them later. These records are often scattered across various places or forgotten in some corner. They may be inspirations, questions, knowledge, or to-do items. Pouch is a single-user, locally-run learning record dashboard where data is persisted as plain JSON files. Zero build tools, zero frontend frameworks, zero runtime external requests. Pouch aims to help you better organize and manage these records. Pouch also includes a wishlist system for managing wish income and expenditure.
+People often jot down many things, only to forget them later. These records are often scattered across various places or forgotten in some corner. They may be inspirations, questions, knowledge, or to-do items. Pouch is a single-user, locally-run learning record dashboard where data is persisted as plain JSON files. Zero build tools, zero frontend frameworks, zero runtime external requests (except version check). Pouch aims to help you better organize and manage these records. Pouch also includes a wishlist system for managing wish income and expenditure.
 
 - Backend: Java 21 + JDK `HttpServer`, third-party library only Gson
-- Frontend: Native HTML/CSS/JS, locally imported Chart.js / marked / DOMPurify
+- Frontend: Native HTML/CSS/JS, locally imported—see [Third-Party Dependencies](#third-party-dependencies)
 
 ## Features
 - Dashboard with six blocks aggregating data overview on the homepage — four-category total count cards, todo completion rate ring, wishlist three-item summary + progress bar, random recall (inspiration/knowledge independent viewed queues), fragmented knowledge composition ring, stale reminder Top N.
-- Supports inserting images in Markdown content. The frontend scales images (max side 1600px) + WebP lossy compression (quality 0.85) and embeds them as base64 into the record's `images` field, separated from the `content` text, without bloating the content. When rendering, `img:xxx` placeholders are replaced with `data:` URIs. Up to 10 images per record, each compressed image not exceeding 300 KB.
-- Automatic backup to `data/.backup/` before every data write (create/update/delete), keeping the most recent ~50 snapshots per file. On startup, if a data file is corrupted, it automatically attempts recovery from newest to oldest backup; the corrupted file is renamed to `.corrupt` and retained.
-- The server binds only to 127.0.0.1 and is not exposed to the public network, suitable for personal local use.
+- Supports inserting images — the frontend scales images (max side 1600px) + WebP lossy compression (quality 0.85) and embeds them as base64 into the record's `images` field, separated from the `content` text, without bloating the content. When rendering, `img:xxx` placeholders are replaced with `data:` URIs. Up to 10 images per record, each compressed image not exceeding 300 KB. The original image file can be deleted after import.
+- Supports inserting local file links — in edit mode, enter the full path to insert a `local-file:` link into the content; after exiting edit mode, click the link to open with the system's default program.
+- Data security — automatic backup to `data/.backup/` before every data write (create/update/delete), keeping the most recent ~50 snapshots per file. On startup, if a data file is corrupted, it automatically attempts recovery from newest to oldest backup; the corrupted file is renamed to `.corrupt` and retained.
+- Only for local — the server binds only to 127.0.0.1 and is not exposed to the public network, suitable for personal local use.
 
 ## Export Function
 
@@ -39,6 +40,7 @@ Available on both the list page (`/list.html`) and wishlist page (`/wishlist.htm
 ## Environment Requirements
 
 - JDK 21
+- Currently supports Windows only, requires PowerShell
 
 ## Quick Start
 

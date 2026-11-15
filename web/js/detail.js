@@ -484,12 +484,12 @@ function linkFile() {
     },
     children: [
       el('h3', { class: 'dialog-title', text: '链接本地文件', style: { marginTop: 0, marginBottom: 'var(--sp-4)', fontSize: 'var(--fs-md)' } }),
-      el('p', { class: 'dialog-hint', text: '请输入文件的完整路径，例如：C:/Users/张三/Documents/文档.pdf', style: { fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginBottom: 'var(--sp-4)' } }),
+      el('p', { class: 'dialog-hint', text: '请输入文件的完整路径，例如：C:/Users/Admin/Documents/doc.pdf', style: { fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginBottom: 'var(--sp-4)' } }),
       el('input', {
         class: 'input input-text',
         id: 'linkFilePathInput',
         attrs: {
-          placeholder: 'C:/... 或 /home/.../文件名',
+          placeholder: 'C:/...',
           'aria-label': '文件路径'
         },
         style: { width: '100%', boxSizing: 'border-box', marginBottom: 'var(--sp-4)' }
@@ -625,7 +625,7 @@ function showTagInput() {
     if (e.key === 'Enter') {
       e.preventDefault();
       const v = normalizeTagInput(input.value);
-      if (!v) { toast('标签每段 1~24 字符、最多 3 层（如 Java/并发）'); return; }
+      if (!v) { toast('标签每段 1~24 字符、最多 3 层'); return; }
       if (used.has(v)) { toast('标签已存在'); return; }
       if ((record.tags || []).length >= MAX_TAGS) { toast(`标签最多 ${MAX_TAGS} 个`); return; }
       try {
