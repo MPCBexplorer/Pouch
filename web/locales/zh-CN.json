@@ -1,0 +1,14 @@
+{
+  "btn": {
+    "export": "导出",
+    "importJson": "导入 JSON",
+    "cancel": "取消",
+    "save": "保存",
+    "test_zh_only": "仅中文测试"
+  },
+  "error": {
+    "invalid_tags": "标签每段 {{maxLen}} 字符、最多 {{maxSegments}} 层",
+    "not_found": "文件不存在",
+    "open_failed": "无法打开文件"
+  }
+}

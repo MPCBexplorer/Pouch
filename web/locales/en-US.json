@@ -1,0 +1,13 @@
+{
+  "btn": {
+    "export": "Export",
+    "importJson": "Import JSON",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "error": {
+    "invalid_tags": "Each tag segment {{maxLen}} chars, max {{maxSegments}} levels",
+    "not_found": "File not found",
+    "open_failed": "Failed to open file"
+  }
+}
