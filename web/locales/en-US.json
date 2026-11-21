@@ -9,5 +9,118 @@
     "invalid_tags": "Each tag segment {{maxLen}} chars, max {{maxSegments}} levels",
     "not_found": "File not found",
     "open_failed": "Failed to open file"
+  },
+  "page": {
+    "title": "Pouch · Learning Dashboard",
+    "heading": "Learning Dashboard"
+  },
+  "nav": {
+    "home": "Home",
+    "list": "List",
+    "detail": "Detail",
+    "wishlist": "Wishlist",
+    "settings": "Settings"
+  },
+  "theme": {
+    "toggle": "Toggle theme"
+  },
+  "update": {
+    "title": "New version available",
+    "download": "Go to download",
+    "close": "Close",
+    "stable": "Stable",
+    "prerelease": "Pre-release",
+    "downloadStable": "Download stable",
+    "downloadPre": "Download pre-release"
+  },
+  "card": {
+    "completion": {
+      "title": "Completion"
+    },
+    "wish": {
+      "title": "Wishlist summary"
+    },
+    "compose": {
+      "title": "Knowledge composition"
+    },
+    "stale": {
+      "title": "Stale reminder"
+    }
+  },
+  "category": {
+    "inspiration": "Inspiration",
+    "question": "Question",
+    "knowledge": "Knowledge",
+    "todo": "Todo"
+  },
+  "wish": {
+    "viewAll": "View all →",
+    "noData": "Wishlist data unavailable",
+    "total": "Total",
+    "spent": "Spent",
+    "remaining": "Remaining",
+    "countLabel": "Count",
+    "countAria": "Purchased proportion",
+    "amountLabel": "Amount",
+    "amountAria": "Spent proportion",
+    "purchased": "{{purchased}} / {{total}} done",
+    "totalItems": "{{total}} items total"
+  },
+  "recall": {
+    "knowledge": {
+      "title": "Random knowledge"
+    },
+    "inspiration": {
+      "title": "Random inspiration"
+    },
+    "refresh": "Change",
+    "pool": {
+      "knowledge": "{{count}} knowledge items",
+      "inspiration": "{{count}} inspiration items"
+    },
+    "empty": "No {{label}} records yet, add one",
+    "addTodoBtn": "Add one →",
+    "noContent": "(No content)",
+    "exhausted": "All viewed this round, click \"Change\" to restart"
+  },
+  "compose": {
+    "allTags": "All tags",
+    "level2": "All level-2 tags",
+    "up": "←",
+    "down": "→",
+    "upAria": "Up: broader tag",
+    "downAria": "Down: more detailed tag",
+    "legend": {
+      "toggleMore": "Show more",
+      "toggleLess": "Show less"
+    }
+  },
+  "stale": {
+    "none": "All progressing recently, no stale records",
+    "byType": "{{label}} {{count}} items",
+    "days": "{{days}} days",
+    "threshold": "Stale over {{days}} days",
+    "more": "Showing top {{returned}} of {{total}} total",
+    "loadFailed": "Stale reminder load failed"
+  },
+  "completion": {
+    "noTodo": "No todos yet",
+    "cancelled": "{{count}} cancelled, not counted",
+    "addTodo": "Add a \"to-do\" to see completion rate",
+    "addTodoBtn": "Add one →",
+    "done": "Done {{count}}",
+    "open": "Open {{count}}",
+    "cancelledNote": "Another {{count}} cancelled, not counted",
+    "rate": "Completion rate {{pct}}%"
+  },
+  "chart": {
+    "tooltip": "{{label}}: {{parsed}} items"
+  },
+  "statCards": {
+    "aria": "View {{label}}, {{count}} items"
+  },
+  "footer": {
+    "copyright": "© 2026 Pouch",
+    "brand": "Pouch"
   }
 }

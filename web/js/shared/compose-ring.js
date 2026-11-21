@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { t, getLang } from '/js/i18n.js';
+
 /**
  * compose-ring.js — 碎片知识构成环（Ticket 08 建立；2026-10-15 随学科分类取消而重构）
  *
@@ -112,7 +114,11 @@ function draw(host, slices, onSliceClick) {
       cutout: '68%',
       plugins: {
         legend: { display: false },   // 用自绘 legend，视觉统一
-        tooltip: { callbacks: { label: ctx => ` ${ctx.label}：${ctx.parsed} 项` } },
+        tooltip: { callbacks: { label: ctx => {
+        const label = ctx.label || '';
+        const parsed = ctx.parsed ?? 0;
+        return getLang() === 'zh-CN' ? ` ${label}：${parsed} 项` : ` ${label}: ${parsed} items`;
+      } } },
       },
       onClick: (event, elements) => {
         if (!onSliceClick || !elements.length) return;
@@ -142,7 +148,7 @@ function renderLegend(host, slices) {
   // 当条目超过 5 条时，添加展开/收起切换
   if (slices.length > LEGEND_SHOW_COUNT) {
     const toggle = h('li', 'compose-legend-toggle');
-    const btn = h('button', 'compose-legend-toggle-btn', '展开更多');
+    const btn = h('button', 'compose-legend-toggle-btn', t('compose.legend.toggleMore'));
     btn.type = 'button';
     let expanded = false;
     btn.addEventListener('click', () => {
@@ -153,7 +159,7 @@ function renderLegend(host, slices) {
           li.classList.toggle('compose-legend-hidden', shouldHide);
         }
       });
-      btn.textContent = expanded ? '收起' : '展开更多';
+      btn.textContent = expanded ? t('compose.legend.toggleLess') : t('compose.legend.toggleMore');
     });
     toggle.append(btn);
     ul.append(toggle);

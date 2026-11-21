@@ -13,11 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/* ============================================================
-   dom.js —— DOM 构造与格式化工具
-   ============================================================ */
-
-import { API } from '/js/api.js';
+import { getLang } from '/js/i18n.js';
 
 /**
  * 创建元素。
@@ -88,6 +84,7 @@ export function debounce(fn, wait = 250) {
 export function statusLabel(cat, status) {
   if (!cat || !Array.isArray(cat.statuses)) return status;
   const found = cat.statuses.find(s => s.value === status);
+  if (getLang() !== 'zh-CN') return status;
   return found ? found.label : status;
 }
 
@@ -157,13 +154,23 @@ export function relTime(iso) {
   if (Number.isNaN(t)) return '';
   const diff = Date.now() - t;
   const min = 60_000, hour = 60 * min, day = 24 * hour;
+  const lang = getLang();
 
-  if (diff < min)        return '刚刚';
-  if (diff < hour)       return `${Math.floor(diff / min)} 分钟前`;
-  if (diff < day)        return `${Math.floor(diff / hour)} 小时前`;
-  if (diff < 7 * day)    return `${Math.floor(diff / day)} 天前`;
-  if (diff < 30 * day)   return `${Math.floor(diff / (7 * day))} 周前`;
-  return iso.slice(0, 10);   // ISO 串前 10 位即 yyyy-MM-dd
+  if (lang === 'zh-CN') {
+    if (diff < min)        return '刚刚';
+    if (diff < hour)       return `${Math.floor(diff / min)} 分钟前`;
+    if (diff < day)        return `${Math.floor(diff / hour)} 小时前`;
+    if (diff < 7 * day)    return `${Math.floor(diff / day)} 天前`;
+    if (diff < 30 * day)   return `${Math.floor(diff / (7 * day))} 周前`;
+    return iso.slice(0, 10);
+  } else {
+    if (diff < min)        return 'just now';
+    if (diff < hour)       return `${Math.floor(diff / min)} minutes ago`;
+    if (diff < day)        return `${Math.floor(diff / hour)} hours ago`;
+    if (diff < 7 * day)    return `${Math.floor(diff / day)} days ago`;
+    if (diff < 30 * day)   return `${Math.floor(diff / (7 * day))} weeks ago`;
+    return iso.slice(0, 10);
+  }
 }
 
 /** 完整时间：2026-10-02 14:23。用于 title 提示与详情页元信息。 */
