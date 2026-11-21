@@ -10,5 +10,118 @@
     "invalid_tags": "标签每段 {{maxLen}} 字符、最多 {{maxSegments}} 层",
     "not_found": "文件不存在",
     "open_failed": "无法打开文件"
+  },
+  "page": {
+    "title": "Pouch · 学习看板",
+    "heading": "学习看板"
+  },
+  "nav": {
+    "home": "首页",
+    "list": "列表",
+    "detail": "详情",
+    "wishlist": "心愿单",
+    "settings": "设置"
+  },
+  "theme": {
+    "toggle": "切换主题"
+  },
+  "update": {
+    "title": "发现新版本",
+    "download": "前往下载",
+    "close": "关闭",
+    "stable": "稳定版",
+    "prerelease": "预览版",
+    "downloadStable": "下载稳定版",
+    "downloadPre": "下载预览版"
+  },
+  "card": {
+    "completion": {
+      "title": "完成情况"
+    },
+    "wish": {
+      "title": "收支心愿单"
+    },
+    "compose": {
+      "title": "碎片知识构成"
+    },
+    "stale": {
+      "title": "陈旧提醒"
+    }
+  },
+  "category": {
+    "inspiration": "灵感",
+    "question": "问题",
+    "knowledge": "知识",
+    "todo": "待办"
+  },
+  "wish": {
+    "viewAll": "查看全部 →",
+    "noData": "心愿单数据不可用",
+    "total": "总心愿",
+    "spent": "已花费",
+    "remaining": "还差",
+    "countLabel": "数量",
+    "countAria": "已购条目占比",
+    "amountLabel": "金额",
+    "amountAria": "已花占总额比例",
+    "purchased": "{{purchased}} / {{total}} 项已实现",
+    "totalItems": "共 {{total}} 项"
+  },
+  "recall": {
+    "knowledge": {
+      "title": "随机知识点"
+    },
+    "inspiration": {
+      "title": "随机灵感"
+    },
+    "refresh": "换一条",
+    "pool": {
+      "knowledge": "共 {{count}} 条知识点",
+      "inspiration": "共 {{count}} 条灵感"
+    },
+    "empty": "还没有{{label}}记录，去记一条",
+    "addTodoBtn": "去记一条 →",
+    "noContent": "（无正文）",
+    "exhausted": "本轮已全部看过，再点“换一条”重新开始"
+  },
+  "compose": {
+    "allTags": "全部标签",
+    "level2": "全部二级标签",
+    "up": "←",
+    "down": "→",
+    "upAria": "上一级：更概览的标签",
+    "downAria": "下一级：更详细的标签",
+    "legend": {
+      "toggleMore": "展开更多",
+      "toggleLess": "收起"
+    }
+  },
+  "stale": {
+    "none": "近期都在推进，没有陈旧记录",
+    "byType": "{{label}}共 {{count}} 个",
+    "days": "{{days}} 天",
+    "threshold": "停滞超 {{days}} 天",
+    "more": "仅显示最严重的 {{returned}} 条，共 {{total}} 条",
+    "loadFailed": "陈旧提醒加载失败"
+  },
+  "completion": {
+    "noTodo": "暂无待办",
+    "cancelled": "{{count}} 项已取消，不计入完成率",
+    "addTodo": "记一条\"要做的事\"后这里会显示完成率",
+    "addTodoBtn": "去记一条 →",
+    "done": "已完成 {{count}}",
+    "open": "未完成 {{count}}",
+    "cancelledNote": "另有 {{count}} 项已取消，不计入统计",
+    "rate": "完成率 {{pct}}%"
+  },
+  "chart": {
+    "tooltip": "{{label}}：{{parsed}} 项"
+  },
+  "statCards": {
+    "aria": "查看{{label}，共 {{count}} 条"
+  },
+  "footer": {
+    "copyright": "© 2026 Pouch",
+    "brand": "Pouch"
   }
 }

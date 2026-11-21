@@ -2,13 +2,27 @@ const bundles = {};
 let currentLang = 'zh-CN';
 
 async function loadLang(lang) {
-  if (bundles[lang]) return bundles[lang];
-  try {
-    const res = await fetch(`/locales/${lang}.json`);
-    bundles[lang] = res.ok ? await res.json() : {};
-  } catch (e) {
-    bundles[lang] = {};
+  delete bundles[lang];
+  const paths = [`/locales/${lang}.json`, `/web/locales/${lang}.json`];
+  for (const path of paths) {
+    try {
+      console.log(`[i18n] Fetching ${path}...`);
+      const res = await fetch(path);
+      console.log(`[i18n] ${path} status: ${res.status} ${res.statusText}`);
+      if (res.ok) {
+        const data = await res.json();
+        bundles[lang] = data;
+        console.log(`[i18n] Loaded ${lang} from ${path}`, Object.keys(data || {}).length, 'keys:', Object.keys(data || {}));
+        return bundles[lang];
+      } else {
+        console.warn(`[i18n] ${path} returned non-ok status: ${res.status}`);
+      }
+    } catch (e) {
+      console.warn(`[i18n] ${path} fetch error:`, e.message);
+    }
   }
+  bundles[lang] = {};
+  console.warn(`[i18n] Failed to load ${lang} from all paths`);
   return bundles[lang];
 }
 
@@ -26,24 +40,29 @@ export async function setLang(lang) {
   }
   currentLang = lang;
   localStorage.setItem('pouch.lang', lang);
+  console.log(`[i18n] Language switched to: ${lang}, bundles keys:`, Object.keys(bundles));
 }
 
 export function getLang() {
   return currentLang;
 }
 
-export async function t(key, params = {}) {
+export function t(key, params = {}) {
   let value = getNested(bundles[currentLang], key);
+
+  if (typeof value !== 'string' && params.default !== undefined) {
+    value = params.default;
+  }
 
   if (typeof value !== 'string' && currentLang !== 'zh-CN') {
     if (!bundles['zh-CN']) {
-      await loadLang('zh-CN');
+      return params.default !== undefined ? params.default : key;
     }
     value = getNested(bundles['zh-CN'], key);
   }
 
   if (typeof value !== 'string') {
-    return key;
+    return params.default !== undefined ? params.default : key;
   }
 
   return value.replace(/\{\{(\w+)\}\}/g, (_, p) =>

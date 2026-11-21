@@ -29,6 +29,7 @@ import { el, render, frag, relTime, fullTime, toast, statusLabel,
          renderWarnings, errorCard, renderMarkdown, renderLatexText } from '/js/dom.js';
 import { formatCents } from '/js/shared/currency.js';
 import { renderComposeRing, buildTagLevel } from '/js/shared/compose-ring.js';
+import { initLang, t, getLang } from '/js/i18n.js';
 
 // ============ 状态 ============
 
@@ -85,6 +86,7 @@ const els = {
 // ============ 启动 ============
 
 async function boot() {
+  await initLang();
   bindComposeNav();
   bindThemeRedraw();
 
@@ -102,11 +104,26 @@ async function boot() {
     loadCompose(),
   ]);
 
+  // 应用 i18n 到静态文本
+  applyI18n();
+
   // 检查版本更新（静默失败，不影响首次加载）
   checkForUpdate();
 
   // 绑定“换一条”按钮（移至标题旁）
   bindRecallRefresh();
+}
+
+/** 将页面上所有 [data-i18n] 元素的文本替换为当前语言的翻译。 */
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (!key) return;
+    const translated = t(key);
+    if (typeof translated === 'string' && translated !== key) {
+      el.textContent = translated;
+    }
+  });
 }
 
 async function loadCategories() {
@@ -143,13 +160,13 @@ function showUpdateBanner(stable, prerelease) {
   if (!banner || !versionText) return;
 
   const parts = [];
-  if (stable?.version) parts.push(`稳定版 ${stable.version}`);
-  if (prerelease?.version) parts.push(`预览版 ${prerelease.version}`);
+  if (stable?.version) parts.push(t('update.stable', { version: stable.version }));
+  if (prerelease?.version) parts.push(t('update.prerelease', { version: prerelease.version }));
   versionText.textContent = parts.join(' / ');
 
   const btn = document.getElementById('updateGoBtn');
   if (btn) {
-    btn.textContent = stable ? '下载稳定版' : '下载预览版';
+    btn.textContent = stable ? t('update.downloadStable') : t('update.downloadPre');
     btn.onclick = () => { window.open(stable?.downloadUrl || prerelease?.downloadUrl, '_blank'); };
     // 如果有预览版，额外追加一个预览版下载按钮
     if (prerelease && stable) {
@@ -157,7 +174,7 @@ function showUpdateBanner(stable, prerelease) {
       const preBtn = document.createElement('button');
       preBtn.type = 'button';
       preBtn.className = 'btn btn-primary btn-download';
-      preBtn.textContent = '下载预览版';
+      preBtn.textContent = t('update.downloadPre');
       preBtn.onclick = () => { window.open(prerelease.downloadUrl, '_blank'); };
       existing.insertAdjacentElement('afterend', preBtn);
     }
@@ -188,11 +205,11 @@ function renderStatCards(s) {
     CATEGORIES.map(c => el('a', {
       class: 'stat-card',
       href: `/list.html?type=${c.type}`,
-      attrs: { 'aria-label': `查看${c.label}，共 ${s.counts[c.type] ?? 0} 条` },
+      attrs: { 'aria-label': t('statCards.aria', { label: c.label, count: s.counts[c.type] ?? 0 }) },
       style: { '--card-accent': `var(--cat-${c.type})` },
       children: [
         el('span', { class: 'stat-num', text: String(s.counts[c.type] ?? 0) }),
-        el('span', { class: 'stat-label', text: c.label }),
+        el('span', { class: 'stat-label', text: t('category.' + c.type, { default: c.label }) }),
       ],
     }))
   ));
@@ -212,11 +229,11 @@ function renderCompletion(s) {
     if (completionChart) { completionChart.destroy(); completionChart = null; }
     els.completionCanvas.style.display = 'none';
     render(meta, frag([
-      el('p', { class: 'empty-hint', text: '暂无待办' }),
+      el('p', { class: 'empty-hint', text: t('completion.noTodo') }),
       el('p', { class: 'chart-meta-sub', text: s.todoCancelled > 0
-        ? `${s.todoCancelled} 项已取消，不计入完成率`
-       : '记一条"要做的事"后这里会显示完成率' }),
-      el('a', { class: 'btn btn-ghost', href: '/list.html?type=todo', text: '去记一条 →' }),
+        ? t('completion.cancelled', { count: s.todoCancelled })
+        : t('completion.addTodo') }),
+      el('a', { class: 'btn btn-ghost', href: '/list.html?type=todo', text: t('completion.addTodoBtn') }),
     ]));
     return;
   }
@@ -228,16 +245,16 @@ function renderCompletion(s) {
   render(meta, frag([
     el('div', { class: 'meta-row', children: [
       el('span', { class: ['dot', 'dot-done'], attrs: { 'aria-hidden': 'true' } }),
-      el('span', { text: `已完成 ${c.done}` }),
+      el('span', { text: t('completion.done', { count: c.done }) }),
     ]}),
     el('div', { class: 'meta-row', children: [
       el('span', { class: ['dot', 'dot-open'], attrs: { 'aria-hidden': 'true' } }),
-      el('span', { text: `未完成 ${c.open}` }),
+      el('span', { text: t('completion.open', { count: c.open }) }),
     ]}),
     s.todoCancelled > 0
-      ? el('p', { class: 'meta-note', text: `另有 ${s.todoCancelled} 项已取消，不计入统计` })
+      ? el('p', { class: 'meta-note', text: t('completion.cancelledNote', { count: s.todoCancelled }) })
       : null,
-    el('p', { class: 'meta-rate', text: `完成率 ${pct}%` }),
+    el('p', { class: 'meta-rate', text: t('completion.rate', { pct }) }),
   ]));
 }
 
@@ -248,7 +265,7 @@ function drawCompletionChart(done, open) {
   completionChart = new Chart(els.completionCanvas, {
     type: 'doughnut',
     data: {
-      labels: ['已完成', '未完成'],
+      labels: [t('completion.done', { count: '' }), t('completion.open', { count: '' })],
       datasets: [{
         data: [done, open],
         backgroundColor: [color('--cat-todo'), color('--gray-300')],
@@ -263,7 +280,11 @@ function drawCompletionChart(done, open) {
       cutout: '68%',
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.label}：${ctx.parsed} 项` } },
+        tooltip: { callbacks: { label: ctx => {
+          const label = ctx.label || '';
+          const parsed = ctx.parsed ?? 0;
+          return getLang() === 'zh-CN' ? `${label}：${parsed} 项` : `${label}: ${parsed} items`;
+        } } },
       },
     },
   });
@@ -292,22 +313,22 @@ async function loadWishSummary() {
 }
 
 function renderWishSummary(s) {
-  if (!s) { render(els.wishSummary, el('p', { class: 'empty-hint', text: '心愿单数据不可用' })); return; }
+  if (!s) { render(els.wishSummary, el('p', { class: 'empty-hint', text: t('wish.noData') })); return; }
   // 两条进度：数量 + 金额（与心愿单页同口径；首页保持 slim 样式）
   const itemCount = s.itemCount || 0;
   const countPct = itemCount > 0 ? Math.round(((s.purchasedCount || 0) / itemCount) * 100) : 0;
   const amountPct = s.totalWishCents > 0 ? Math.round((s.spentCents / s.totalWishCents) * 100) : 0;
   render(els.wishSummary, frag([
     el('div', { class: 'sum-row', children: [
-      summaryItem('总心愿', s.totalWishCents, 'sum-total'),
-      summaryItem('已花费', s.spentCents, 'sum-spent'),
-      summaryItem('还差', s.remainingCents, 'sum-remaining'),
+      summaryItem(t('wish.total'), s.totalWishCents, 'sum-total'),
+      summaryItem(t('wish.spent'), s.spentCents, 'sum-spent'),
+      summaryItem(t('wish.remaining'), s.remainingCents, 'sum-remaining'),
     ]}),
-    sumProgressBar('数量', countPct, '已购条目占比'),
-    sumProgressBar('金额', amountPct, '已花占总额比例'),
+    sumProgressBar(t('wish.countLabel'), countPct, t('wish.countAria')),
+    sumProgressBar(t('wish.amountLabel'), amountPct, t('wish.amountAria')),
     el('p', { class: 'sum-note', text: s.purchasedCount > 0
-      ? `${s.purchasedCount} / ${s.itemCount} 项已实现`
-      : `共 ${s.itemCount} 项` }),
+      ? t('wish.purchased', { purchased: s.purchasedCount, total: s.itemCount })
+      : t('wish.totalItems', { total: s.itemCount }) }),
   ]));
 }
 
@@ -371,8 +392,8 @@ function renderRecall(type, data) {
   if (!data || !data.record) {
     const cat = catOf(type);
     render(box, frag([
-      el('p', { class: 'empty-hint', text: `还没有${cat ? cat.label : '记录'}，去记一条` }),
-      el('a', { class: 'btn btn-ghost', href: `/list.html?type=${type}`, text: '去记一条 →' }),
+      el('p', { class: 'empty-hint', text: t('recall.empty', { label: cat ? cat.label : '记录' }) }),
+      el('a', { class: 'btn btn-ghost', href: `/list.html?type=${type}`, text: t('recall.addTodoBtn') }),
     ]));
     return;
   }
@@ -385,7 +406,7 @@ function renderRecall(type, data) {
       el('h3', { class: 'recall-title', html: renderLatexText(r.title) }),
       mdHtml
         ? el('div', { class: 'recall-excerpt', html: mdHtml })
-        : el('p', { class: 'recall-excerpt empty-hint', text: '（无正文）' }),
+        : el('p', { class: 'recall-excerpt empty-hint', text: t('recall.noContent') }),
       el('div', { class: 'recall-foot', children: [
         ...(r.tags || []).slice(0, 3).map(t => el('span', { class: 'badge badge-tag', text: t })),
         el('span', { class: 'recall-time', text: relTime(r.createdAt),
@@ -393,14 +414,14 @@ function renderRecall(type, data) {
       ]}),
     ]}),
     st.exhausted
-      ? el('p', { class: 'recall-exhausted', text: '本轮已全部看过，再点"换一条"重新开始' })
+      ? el('p', { class: 'recall-exhausted', text: t('recall.exhausted') })
       : null,
   ]));
   // 更新标题旁的总数统计
   const poolEl = document.querySelector(`.recall-pool[data-type="${type}"]`);
   if (poolEl) {
-    const label = cat ? cat.label : '';
-    poolEl.textContent = `共 ${data.poolSize} 条${label}`;
+    const label = cat ? t('category.' + cat.type, { default: cat.label }) : '';
+    poolEl.textContent = t(`recall.pool.${type}`, { count: data.poolSize }) + (label ? ' ' + label : '');
   }
 }
 
@@ -448,7 +469,7 @@ function renderRing() {
     ({ slices, hasChildren } = buildTagLevel(compose.tags, compose.path));
   }
   renderComposeRing(els.composeRing, slices, handleSliceClick);
-  if (els.composePath) els.composePath.textContent = compose.path === '__level1__' ? '全部二级标签' : (compose.path || '全部标签');
+  if (els.composePath) els.composePath.textContent = compose.path === '__level1__' ? t('compose.level2') : t('compose.allTags');
   if (els.ringUp) els.ringUp.disabled = !compose.path;
   if (els.ringDown) els.ringDown.disabled = !hasChildren;
 }
@@ -521,15 +542,15 @@ function renderStale(s) {
   const thresholds = s.thresholds || {};
   const dist = Object.keys(byType).filter(t => byType[t] > 0);
   const distNodes = dist.length
-    ? dist.map(t => {
-        const cat = catOf(t);
-        return el('span', { class: 'badge badge-stale-count', text: `${cat ? cat.label : t}共 ${byType[t]} 个` });
+    ? dist.map(type => {
+        const cat = catOf(type);
+        return el('span', { class: 'badge badge-stale-count', text: t('stale.byType', { label: cat ? t('category.' + cat.type, { default: cat.label }) : type, count: byType[type] }) });
       })
     : null;
 
   if (!items.length) {
     render(els.staleBody, frag([
-      el('p', { class: 'empty-hint', text: '近期都在推进，没有陈旧记录' }),
+      el('p', { class: 'empty-hint', text: t('stale.none') }),
       distNodes ? el('div', { class: 'stale-dist', children: distNodes }) : null,
     ]));
     return;
@@ -540,18 +561,18 @@ function renderStale(s) {
       const cat = catOf(it.type);
       return el('li', { class: 'stale-item', children: [
         el('a', { class: 'stale-link', href: `/detail.html?id=${it.id}&from=%2F`, children: [
-          el('span', { class: ['badge', `badge-${it.type}`], text: cat ? cat.label : it.type }),
+          el('span', { class: ['badge', `badge-${it.type}`], text: cat ? t('category.' + cat.type, { default: cat.label }) : it.type }),
           el('span', { class: 'stale-title', text: it.title }),
           el('span', { class: ['badge', `badge-status-${it.status}`], text: statusLabel(cat, it.status) }),
-          el('span', { class: 'stale-days', text: `${it.idleDays} 天` }),
+          el('span', { class: 'stale-days', text: t('stale.days', { days: it.idleDays }) }),
         ]}),
         el('span', { class: 'stale-threshold',
-                     text: thresholds[it.type] != null ? `停滞超 ${thresholds[it.type]} 天` : '' }),
+                     text: thresholds[it.type] != null ? t('stale.threshold', { days: thresholds[it.type] }) : '' }),
       ]});
     }) }),
     distNodes ? el('div', { class: 'stale-dist', children: distNodes }) : null,
     (s.total > s.returned)
-      ? el('p', { class: 'stale-more', text: `仅显示最严重的 ${s.returned} 条，共 ${s.total} 条` })
+      ? el('p', { class: 'stale-more', text: t('stale.more', { returned: s.returned, total: s.total }) })
       : null,
   ]));
 }
