@@ -41,6 +41,8 @@ export async function setLang(lang) {
   currentLang = lang;
   localStorage.setItem('pouch.lang', lang);
   document.documentElement.lang = lang;
+  applyI18n();
+  document.dispatchEvent(new CustomEvent('pouch:langchange', { detail: { lang } }));
   console.log(`[i18n] Language switched to: ${lang}, bundles keys:`, Object.keys(bundles));
 }
 
@@ -66,7 +68,7 @@ export function t(key, params = {}) {
     return key;
   }
 
-  return value.replace(/\{\{(\w+)\}\}/g, (_, p) =>
+  return value.replace(/\{\{?(\w+)\}?\}/g, (_, p) =>
     params[p] !== undefined ? String(params[p]) : `{{${p}}}`
   );
 }

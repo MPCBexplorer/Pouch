@@ -1410,6 +1410,12 @@ if (exportMode) {
       renderSidebar();
       refreshOverviewCounts();   // 侧栏计数徽标：进入页面即有真实计数（用户故事 27）
       await reload();
+
+      // 语言切换后重新渲染页面
+      document.addEventListener('pouch:langchange', () => {
+        applyI18n();
+        reload();
+      });
     } catch (e) {
       console.error('初始化失败:', e);
       showError(e.isNetwork
