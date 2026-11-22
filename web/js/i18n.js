@@ -40,6 +40,7 @@ export async function setLang(lang) {
   }
   currentLang = lang;
   localStorage.setItem('pouch.lang', lang);
+  document.documentElement.lang = lang;
   console.log(`[i18n] Language switched to: ${lang}, bundles keys:`, Object.keys(bundles));
 }
 
@@ -48,21 +49,21 @@ export function getLang() {
 }
 
 export function t(key, params = {}) {
-  let value = getNested(bundles[currentLang], key);
-
-  if (typeof value !== 'string' && params.default !== undefined) {
-    value = params.default;
-  }
+  const current = bundles[currentLang];
+  const zh = bundles['zh-CN'];
+  let value = getNested(current, key);
 
   if (typeof value !== 'string' && currentLang !== 'zh-CN') {
-    if (!bundles['zh-CN']) {
-      return params.default !== undefined ? params.default : key;
-    }
-    value = getNested(bundles['zh-CN'], key);
+    value = getNested(zh, key);
   }
 
   if (typeof value !== 'string') {
-    return params.default !== undefined ? params.default : key;
+    value = params.default !== undefined ? params.default : key;
+  }
+
+  if (typeof value !== 'string') {
+    console.log('[i18n] t() key=', key, '| currentLang=', currentLang, '| bundles[currentLang]=', JSON.stringify(current), '| bundles[zh-CN]=', JSON.stringify(zh));
+    return key;
   }
 
   return value.replace(/\{\{(\w+)\}\}/g, (_, p) =>
@@ -80,9 +81,23 @@ export async function initLang() {
     currentLang = 'en-US';
   }
 
+  document.documentElement.lang = currentLang;
+
   await loadLang(currentLang);
 
   if (currentLang !== 'zh-CN') {
     await loadLang('zh-CN');
   }
+}
+
+/** 将页面上所有 [data-i18n] 元素的文本替换为当前语言的翻译。 */
+export function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (!key) return;
+    const translated = t(key);
+    if (typeof translated === 'string' && translated !== key) {
+      el.textContent = translated;
+    }
+  });
 }
