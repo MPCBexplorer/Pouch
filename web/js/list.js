@@ -20,6 +20,7 @@
  */
 import { API, LIMITS } from '/js/api.js';
 import { el, render, frag, debounce, excerpt, relTime, fullTime, toast, statusLabel, renderLatexText, renderMarkdown, bindLocalFileLinks } from '/js/dom.js';
+import { initLang, t, getLang, applyI18n } from '/js/i18n.js';
 
   // ============ 页面元素引用 ============
   const els = {
@@ -139,7 +140,7 @@ async function invertSelection() {
 
 function updateExportCount() {
   const el = els.exportToolbar.querySelector('.export-count');
-  if (el) el.textContent = `已选 ${selectedIds.size} 条`;
+  if (el) el.textContent = t('list.exportCount', { n: selectedIds.size });
 }
 
 async function confirmSelection() {
@@ -162,16 +163,16 @@ function renderPreview(previewItems) {
     const tags = r.tags || [];
     const firstTag = tags[0] || '';
     const parts = firstTag.split('/').map(p => p.trim()).filter(Boolean);
-    const mainTag = parts[0] || '(无标签)';
+    const mainTag = parts[0] || t('list.noLabel');
     if (!hierarchy.has(mainTag)) hierarchy.set(mainTag, new Map());
     const subMap = hierarchy.get(mainTag);
     const subTag = parts[1] || null;
-    const key = subTag ? subTag : '(无子标签)';
+    const key = subTag ? subTag : t('list.noSubLabel');
     if (!subMap.has(key)) subMap.set(key, []);
     subMap.get(key).push({ record: r, hasSub: !!subTag });
   }
 
-  const catLabel = cat ? cat.label : '记录';
+  const catLabel = cat ? t('category.' + cat.type, { default: cat.label }) : t('list.noLabel');
 
   render(els.listBody, []);
   els.listPager.hidden = true;
@@ -183,10 +184,10 @@ function renderPreview(previewItems) {
 
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10);
-  const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const timeStr = now.toLocaleTimeString(getLang() === 'zh-CN' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
   const previewTitle = el('h3', { class: 'export-preview-total', children: [
-    el('span', { text: `${catLabel}（共 ${previewItems.length} 条）` }),
-    el('span', { class: 'export-preview-timestamp', text: `  导出于 ${dateStr} ${timeStr}` }),
+    el('span', { text: t('list.previewTitle', { catLabel, n: previewItems.length }) }),
+    el('span', { class: 'export-preview-timestamp', text: t('list.previewTimestamp', { date: dateStr, time: timeStr }) }),
   ]});
 
   const groupNodes = [];
@@ -194,7 +195,7 @@ function renderPreview(previewItems) {
   for (const [mainTag, subMap] of hierarchy) {
     groupNum++;
     const mainItemCount = Array.from(subMap.values()).reduce((sum, items) => sum + items.length, 0);
-    const tagHeader = el('h4', { class: 'export-pdf-tag-group', text: `${groupNum}. ${mainTag}（共 ${mainItemCount} 条）` });
+    const tagHeader = el('h4', { class: 'export-pdf-tag-group', text: t('list.groupHeader', { groupNum, tag: mainTag, count: mainItemCount }) });
 
     const subNodes = [];
     let subNum = 0;
@@ -204,7 +205,7 @@ function renderPreview(previewItems) {
 
       const itemNodes = entries.map(({ record: r }, itemIdx) => {
         const itemNum = itemIdx + 1;
-        const itemNumStr = hasSub ? `${groupNum}.${subNum}.${itemNum}` : `${groupNum}.${itemNum}`;
+        const itemNumStr = hasSub ? t('list.itemNum', { groupNum, subNum, itemNum }) : t('list.itemNumSimple', { groupNum, itemNum });
         const isKnowledge = r.type === 'knowledge';
         const titleHtml = renderLatexText(r.title);
         const contentHtml = r.content ? renderMarkdown(r.content, r.images || []) : '';
@@ -218,7 +219,7 @@ function renderPreview(previewItems) {
 
       if (hasSub) {
         const subItemCount = entries.length;
-        const subHeader = el('div', { class: 'export-pdf-sub-group', text: `  ${groupNum}.${subNum}. ${subTagKey}（共 ${subItemCount} 条）` });
+        const subHeader = el('div', { class: 'export-pdf-sub-group', text: t('list.subGroupHeader', { groupNum, subNum, tag: subTagKey, count: subItemCount }) });
         subNodes.push(subHeader, ...itemNodes);
       } else {
         subNodes.push(...itemNodes);
@@ -231,9 +232,9 @@ function renderPreview(previewItems) {
     previewTitle,
     el('div', { class: 'export-preview-list', children: groupNodes }),
     el('div', { class: 'export-preview-footer', children: [
-      el('button', { class: 'btn btn-primary', text: '下载 PDF', on: { click: savePDF } }),
-      el('button', { class: 'btn btn-ghost', text: '导出为 JSON', on: { click: exportJSON } }),
-      el('button', { class: 'btn btn-ghost', text: '取消', on: { click: exitExportMode } }),
+      el('button', { class: 'btn btn-primary', text: t('list.downloadPdf'), on: { click: savePDF } }),
+      el('button', { class: 'btn btn-ghost', text: t('list.exportJson'), on: { click: exportJSON } }),
+      el('button', { class: 'btn btn-ghost', text: t('list.previewCancel'), on: { click: exitExportMode } }),
     ]}),
   ]));
   bindLocalFileLinks(els.exportPreview);
@@ -243,7 +244,7 @@ function renderPreview(previewItems) {
 function groupByTag(items) {
   const groups = {};
   for (const r of items) {
-    const tag = (r.tags && r.tags[0]) || '(无标签)';
+    const tag = (r.tags && r.tags[0]) || t('list.noLabel');
     if (!groups[tag]) groups[tag] = [];
     groups[tag].push(r);
   }
@@ -267,7 +268,7 @@ async function exportJSON() {
     URL.revokeObjectURL(url);
     toast(`JSON 导出成功（${state.type}）`, 'ok');
   } catch (e) {
-    toast('导出失败：' + (e.message || '未知错误'), 'error');
+    toast(t('list.exportJSONFailed', { message: e.message || t('list.unknownError') }), 'error');
   }
 }
 
@@ -278,21 +279,21 @@ async function handleImport(e) {
   try {
     const text = await file.text();
     const items = JSON.parse(text);
-    if (!Array.isArray(items)) throw new Error('JSON 必须是数组');
+    if (!Array.isArray(items)) throw new Error(t('list.importJSONNotArray'));
     // 验证类别：导入的每条记录 type 必须与当前页类别一致
     for (const item of items) {
       if (item.type && item.type !== state.type) {
-        throw new Error('错误的类别');
+        throw new Error(t('list.importWrongCategory'));
       }
     }
     const res = await API.importRecords(state.type, items);
     const n = res?.imported ?? items.length;
-    toast(`已导入 ${n} 条（${state.type}）`, 'ok');
+    toast(t('list.importSuccess', { n, type: state.type }), 'ok');
     els.importJsonFile.value = '';
     await reload();
   } catch (err) {
     els.importJsonFile.value = '';
-    toast('导入失败：' + (err.message || '未知错误'), 'error');
+    toast(t('list.importFailed', { message: err.message || t('list.unknownError') }), 'error');
   }
 }
 
@@ -524,7 +525,7 @@ async function savePDF() {
   try {
     const previewEl = els.exportPreview;
     if (!previewEl) {
-      throw new Error('找不到导出预览区域 #exportPreview');
+      throw new Error(t('list.exportPreviewNotFound'));
     }
 
     const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF;
@@ -589,7 +590,7 @@ async function savePDF() {
       <html lang="zh-CN">
       <head>
         <meta charset="utf-8">
-        <title>PDF 预览 - ${fileName}</title>
+        <title>${t('list.pdfPreviewTitle', { fileName })}</title>
         <style>
           body { margin: 0; padding: 0; background: #f5f5f5; font-family: sans-serif; }
           .toolbar { position: fixed; top: 10px; left: 10px; right: 10px; z-index: 9999;
@@ -605,8 +606,8 @@ async function savePDF() {
       </head>
       <body>
         <div class="toolbar">
-          <span class="hint">预览效果即最终 PDF 效果，点击下方按钮保存到本地</span>
-          <button type="button" onclick="downloadPdf()">下载 PDF</button>
+          <span class="hint">${t('list.pdfPreviewHint')}</span>
+          <button type="button" onclick="downloadPdf()">${t('list.btnDownloadPdf')}</button>
         </div>
         <iframe src="${pdfDataUri}" id="pdfFrame"></iframe>
         <script>
@@ -625,7 +626,7 @@ async function savePDF() {
     previewWin.document.close();
   } catch (e) {
     console.error('PDF 生成失败:', e);
-    alert('PDF 生成失败：' + (e.message || '未知错误'));
+    alert(t('list.pdfGenerateFailed') + ': ' + (e.message || t('list.unknownError')));
   }
 
 }
@@ -633,13 +634,13 @@ async function savePDF() {
 function buildExportToolbar() {
   return el('div', { class: 'export-toolbar', children: [
     el('div', { class: 'export-toolbar-left', children: [
-      el('span', { class: 'export-count', text: `已选 ${selectedIds.size} 条` }),
+      el('span', { class: 'export-count', text: t('list.exportCount', { n: selectedIds.size }) }),
     ]}),
     el('div', { class: 'export-toolbar-right', children: [
-      el('button', { class: 'btn btn-ghost', text: '全选', on: { click: async () => { await selectAllVisible(); reload(); } } }),
-      el('button', { class: 'btn btn-ghost', text: '反选', on: { click: async () => { await invertSelection(); reload(); } } }),
-      el('button', { class: 'btn btn-primary', text: '确定', on: { click: confirmSelection } }),
-      el('button', { class: 'btn btn-ghost', text: '取消', on: { click: exitExportMode } }),
+      el('button', { class: 'btn btn-ghost', text: t('list.btnSelectAll'), on: { click: async () => { await selectAllVisible(); reload(); } } }),
+      el('button', { class: 'btn btn-ghost', text: t('list.btnInvert'), on: { click: async () => { await invertSelection(); reload(); } } }),
+      el('button', { class: 'btn btn-primary', text: t('list.btnConfirm'), on: { click: confirmSelection } }),
+      el('button', { class: 'btn btn-ghost', text: t('list.btnPreviewCancel'), on: { click: exitExportMode } }),
     ]}),
   ]});
 }
@@ -648,7 +649,7 @@ function importButton() {
   return el('button', {
     type: 'button',
     class: 'btn btn-primary',
-    text: '导入 JSON',
+    text: t('list.btnImportJson'),
     on: { click: () => els.importJsonFile.click() }
   });
 }
@@ -658,7 +659,7 @@ function exportButton() {
     el('button', {
       type: 'button',
       class: 'btn btn-primary',
-      text: '导出',
+      text: t('list.btnExport'),
       on: { click: enterExportMode }
     }),
     importButton(),
@@ -745,9 +746,9 @@ let selectedIds = new Set();
     return el('input', {
       type: 'search',
       class: 'input input-search',
-      placeholder: '搜索标题与正文…',
+      placeholder: t('list.filterPlaceholder'),
       value: state.q || '',
-      attrs: { 'aria-label': '关键词搜索' },
+      attrs: { 'aria-label': t('list.filterAria') },
       on: {
         keydown: e => { if (e.key === 'Enter') { e.preventDefault(); state.q = e.target.value; state.page = 1; reload(); } }
       }
@@ -757,12 +758,16 @@ let selectedIds = new Set();
 
   function statusSelect(cat) {
     // 状态枚举来自元数据（用户故事 62）：/api/meta/categories 的 statuses 是 [{value,label}]
-    const options = [{ value: '', text: '全部状态' }].concat(
-      (cat.statuses || []).map(s => ({ value: s.value, text: s.label }))
+    // s.value 是英文 key（如 mastered, learning），直接用于 t() 查找翻译；s.label 是中文兜底
+    const options = [{ value: '', text: t('list.statusAll') }].concat(
+      (cat.statuses || []).map(s => {
+        const text = t('list.status.' + s.value, { default: s.label });
+        return { value: s.value, text };
+      })
     );
     return el('select', {
       class: 'select',
-      attrs: { 'aria-label': '按状态筛选' },
+      attrs: { 'aria-label': t('list.statusAria') },
       value: state.status || '',
       on: { change: e => { state.status = e.target.value; state.page = 1; reload(); } },
       children: options.map(o => el('option', { value: o.value, text: o.text, selected: state.status === o.value }))
@@ -777,7 +782,7 @@ let selectedIds = new Set();
   function tagSelect() {
     const select = el('select', {
       class: 'select',
-      attrs: { 'aria-label': '按标签筛选' },
+      attrs: { 'aria-label': t('list.tagAria') },
       value: '',
       on: {
         change: e => {
@@ -787,12 +792,12 @@ let selectedIds = new Set();
           e.target.value = '';   // 复位为"全部标签"，便于继续追加挑选
         }
       },
-      children: [el('option', { value: '', text: '全部标签' })]
+      children: [el('option', { value: '', text: t('list.tagAll') })]
     });
 
     API.tags(state.type).then(({ tags }) => {
       render(select, frag([
-        el('option', { value: '', text: '全部标签' }),
+        el('option', { value: '', text: t('list.tagAll') }),
         ...tags.map(t => el('option', {
           value: t.tag,
           text: '　'.repeat(t.depth || 0) + (t.name || t.tag) + ` (${t.count})`,
@@ -808,7 +813,7 @@ let selectedIds = new Set();
         type: 'date',
         class: 'input input-date',
         value: state.dueFrom || '',
-        attrs: { 'aria-label': '截止日期从', placeholder: '开始日期' },
+        attrs: { 'aria-label': t('list.dueFrom'), placeholder: t('list.dueFromPlaceholder') },
         on: { change: e => { state.dueFrom = e.target.value; state.page = 1; reload(); } }
       }),
       el('span', { class: 'date-sep', text: '~' }),
@@ -816,7 +821,7 @@ let selectedIds = new Set();
         type: 'date',
         class: 'input input-date',
         value: state.dueTo || '',
-        attrs: { 'aria-label': '截止日期到', placeholder: '结束日期' },
+        attrs: { 'aria-label': t('list.dueTo'), placeholder: t('list.dueToPlaceholder') },
         on: { change: e => { state.dueTo = e.target.value; state.page = 1; reload(); } }
       }),
     ]});
@@ -824,17 +829,17 @@ let selectedIds = new Set();
 
   function sortSelect() {
     const options = [
-      { value: 'updatedAt', text: '更新时间' },
-      { value: 'createdAt', text: '创建时间' },
-      { value: 'title', text: '标题' },
+      { value: 'updatedAt', text: t('list.sortUpdated') },
+      { value: 'createdAt', text: t('list.sortCreated') },
+      { value: 'title', text: t('list.sortTitle') },
     ];
     const cat = catOf(state.type);
     if (cat.fields.includes('dueDate')) {
-      options.push({ value: 'dueDate', text: '截止日期' });
+      options.push({ value: 'dueDate', text: t('list.sortDue') });
     }
     return el('select', {
       class: 'select',
-      attrs: { 'aria-label': '排序方式' },
+      attrs: { 'aria-label': t('list.sortAria') },
       value: state.sort,
       on: { change: e => { state.sort = e.target.value; state.page = 1; reload(); } },
       children: options.map(o => el('option', { value: o.value, text: o.text, selected: state.sort === o.value }))
@@ -844,12 +849,12 @@ let selectedIds = new Set();
   function orderSelect() {
     return el('select', {
       class: 'select select-sm',
-      attrs: { 'aria-label': '排序方向' },
+      attrs: { 'aria-label': t('list.orderAria') },
       value: state.order,
       on: { change: e => { state.order = e.target.value; state.page = 1; reload(); } },
       children: [
-        el('option', { value: 'desc', text: '降序', selected: state.order === 'desc' }),
-        el('option', { value: 'asc', text: '升序', selected: state.order === 'asc' }),
+        el('option', { value: 'desc', text: t('list.orderDesc'), selected: state.order === 'desc' }),
+        el('option', { value: 'asc', text: t('list.orderAsc'), selected: state.order === 'asc' }),
       ]
     });
   }
@@ -857,11 +862,11 @@ let selectedIds = new Set();
   function sizeSelect() {
     return el('select', {
       class: 'select select-sm',
-      attrs: { 'aria-label': '每页条数' },
+      attrs: { 'aria-label': t('list.sizeAria') },
       value: String(state.size),
       on: { change: e => { state.size = parseInt(e.target.value, 10); state.page = 1; reload(); } },
       children: [10, 20, 50, 100].map(n =>
-        el('option', { value: String(n), text: `${n} 条/页`, selected: state.size === n })
+        el('option', { value: String(n), text: t('list.size', { n }), selected: state.size === n })
       )
     });
   }
@@ -869,13 +874,13 @@ let selectedIds = new Set();
   function pinnedSelect() {
     return el('select', {
       class: 'select select-sm',
-      attrs: { 'aria-label': '置顶筛选' },
+      attrs: { 'aria-label': t('list.pinnedAria') },
       value: state.pinned === null ? '' : String(state.pinned),
       on: { change: e => { state.pinned = e.target.value === '' ? null : e.target.value === 'true'; state.page = 1; reload(); } },
       children: [
-        el('option', { value: '', text: '全部', selected: state.pinned === null }),
-        el('option', { value: 'true', text: '仅置顶', selected: state.pinned === true }),
-        el('option', { value: 'false', text: '仅非置顶', selected: state.pinned === false }),
+        el('option', { value: '', text: t('list.pinnedAll'), selected: state.pinned === null }),
+        el('option', { value: 'true', text: t('list.pinnedOnly'), selected: state.pinned === true }),
+        el('option', { value: 'false', text: t('list.pinnedNot'), selected: state.pinned === false }),
       ]
     });
   }
@@ -884,7 +889,7 @@ let selectedIds = new Set();
     return el('button', {
       type: 'button',
       class: 'btn btn-primary',
-      text: '+ 新建',
+      text: t('list.btnNew'),
       on: { click: openNewModal }
     });
   }
@@ -893,7 +898,7 @@ let selectedIds = new Set();
     return el('button', {
       type: 'button',
       class: 'btn btn-ghost',
-      text: '清除全部筛选',
+      text: t('list.btnClearFilters'),
       on: { click: clearFilters }
     });
   }
@@ -931,20 +936,18 @@ if (exportMode) {
 
   function renderFilterChips() {
     const chips = [];
-    if (state.q) chips.push(makeChip(`搜索: ${state.q}`, () => { state.q = ''; state.page = 1; reload(); }));
-    for (const t of state.tags) {
-      chips.push(makeChip(`标签: ${t}`, () => { state.tags = state.tags.filter(x => x !== t); state.page = 1; reload(); }));
+    if (state.q) chips.push(makeChip(t('list.chipSearch', { q: state.q }), () => { state.q = ''; state.page = 1; reload(); }));
+    for (const tag of state.tags) {
+      chips.push(makeChip(t('list.chipTag', { tag }), () => { state.tags = state.tags.filter(x => x !== tag); state.page = 1; reload(); }));
     }
-    if (state.status) chips.push(makeChip(`状态: ${statusLabel(catOf(state.type), state.status)}`, () => { state.status = ''; state.page = 1; reload(); }));
-    if (state.dueFrom || state.dueTo) chips.push(makeChip(`截止: ${state.dueFrom || '…'} ~ ${state.dueTo || '…'}`, () => { state.dueFrom = ''; state.dueTo = ''; state.page = 1; reload(); }));
-    if (state.pinned !== null) chips.push(makeChip(`置顶: ${state.pinned ? '是' : '否'}`, () => { state.pinned = null; state.page = 1; reload(); }));
+    if (state.status) chips.push(makeChip(t('list.chipStatus', { status: statusLabel(catOf(state.type), state.status) }), () => { state.status = ''; state.page = 1; reload(); }));
+    if (state.dueFrom || state.dueTo) chips.push(makeChip(t('list.chipDue', { from: state.dueFrom || '…', to: state.dueTo || '…' }), () => { state.dueFrom = ''; state.dueTo = ''; state.page = 1; reload(); }));
+    if (state.pinned !== null) chips.push(makeChip(t('list.chipPinned', { pinned: state.pinned ? t('list.pinnedOnly') : t('list.pinnedNot') }), () => { state.pinned = null; state.page = 1; reload(); }));
 
     if (chips.length) {
-      render(els.filterChips, frag([el('div', { class: 'chips-label', text: '当前筛选:' }), ...chips]));
+      render(els.filterChips, frag([el('div', { class: 'chips-label', text: t('list.chipsLabel') }), ...chips]));
       els.filterChips.hidden = false;
     } else {
-      // 必须清空子节点：只设 hidden 会留下旧 chip 的 DOM（若 CSS 的 display 覆盖了
-      // [hidden]，用户就会看到"点了 × 标签还在"——本 bug 的实际形态）
       render(els.filterChips, []);
       els.filterChips.hidden = true;
     }
@@ -953,7 +956,7 @@ if (exportMode) {
   function makeChip(text, onRemove) {
     return el('span', { class: 'filter-chip', children: [
       el('span', { text }),
-      el('button', { class: 'chip-remove', 'aria-label': `移除筛选: ${text}`, on: { click: onRemove }, children: ['×'] })
+      el('button', { class: 'chip-remove', 'aria-label': t('list.chipRemove', { text }), on: { click: onRemove }, children: ['×'] })
     ]});
   }
 
@@ -1001,7 +1004,7 @@ if (exportMode) {
       statusControl(r, cat),
       el('a', { class: 'row-main', href: exportMode ? undefined : detailUrl(r), children: [
         el('h3', { class: 'row-title', children: [
-          r.pinned ? el('span', { class: 'pin-mark', text: '置顶', attrs: { 'aria-label': '已置顶' } }) : null,
+          r.pinned ? el('span', { class: 'pin-mark', text: t('list.rowPinned'), attrs: { 'aria-label': t('list.rowPinnedAria') } }) : null,
           el('span', { html: renderLatexText(r.title) }),
   ]}),
         r.content ? el('p', { class: 'row-excerpt', html: isListFullRender() ? renderMarkdown(r.content) : renderLatexText(excerpt(r.content, 150)) }) : null,
@@ -1010,10 +1013,11 @@ if (exportMode) {
           ...r.tags.slice(0, 4).map(t => el('span', { class: 'badge badge-tag', text: t })),
           r.tags.length > 4 ? el('span', { class: 'badge badge-tag', text: `+${r.tags.length - 4}` }) : null,
           r.dueDate ? dueBadge(r) : null,
-          r.notes?.length ? el('span', { class: 'row-note-count', text: `${r.notes.length} 条笔记` }) : null,
+          r.notes?.length ? el('span', { class: 'row-note-count', text: t('list.rowNotes', { n: r.notes.length }) }) : null,
+          r.notes?.length > 9 ? el('span', { class: 'row-note-count', text: t('list.rowNotesMore', { n: r.notes.length - 9 }) }) : null,
           ]}),
       ]}),
-      el('time', { class: 'row-time', text: relTime(r.updatedAt), attrs: { title: '更新于 ' + fullTime(r.updatedAt), datetime: r.updatedAt } }),
+      el('time', { class: 'row-time', text: relTime(r.updatedAt), attrs: { title: t('list.rowDueAria', { date: fullTime(r.updatedAt) }), datetime: r.updatedAt } }),
     );
 
     const row = el('article', {
@@ -1039,7 +1043,7 @@ if (exportMode) {
       return el('input', {
         type: 'checkbox',
         checked: r.status === 'done',
-        attrs: { 'aria-label': `标记「${r.title}」为已完成` },
+        attrs: { 'aria-label': t('list.rowTodoDone', { title: r.title }) },
         on: { change: e => flipStatus(r, e.target.checked ? 'done' : 'open', e.target) }
       });
     }
@@ -1047,7 +1051,7 @@ if (exportMode) {
       return el('input', {
         type: 'checkbox',
         checked: r.status === 'resolved',
-        attrs: { 'aria-label': `标记「${r.title}」为已解决` },
+        attrs: { 'aria-label': t('list.rowQuestionResolved', { title: r.title }) },
         on: { change: e => flipStatus(r, e.target.checked ? 'resolved' : 'open', e.target) }
       });
     }
@@ -1059,8 +1063,8 @@ if (exportMode) {
     const days = Math.ceil((due - Date.now()) / 86400000);
     const done = r.status === 'done';
     const cls = done ? '' : days < 0 ? 'badge-overdue' : days <= 3 ? 'badge-soon' : '';
-    const text = days < 0 && !done ? `逾期 ${-days} 天` : r.dueDate.slice(5);
-    return el('span', { class: ['badge', 'badge-due', cls], text, attrs: { title: '截止 ' + r.dueDate } });
+    const text = days < 0 && !done ? t('list.rowDueOverdue', { days: -days }) : r.dueDate.slice(5);
+    return el('span', { class: ['badge', 'badge-due', cls], text, attrs: { title: t('list.rowDueAria', { date: r.dueDate }) } });
   }
 
   async function flipStatus(r, newStatus, input) {
@@ -1094,27 +1098,28 @@ if (exportMode) {
 
     const pages = [];
     if (state.page > 1) {
-      pages.push(el('button', { class: 'pager-btn', text: '← 上一页', on: { click: () => { state.page--; reload(); } } }));
+      pages.push(el('button', { class: 'pager-btn', text: t('list.pagerPrev'), on: { click: () => { state.page--; reload(); } } }));
     }
-    pages.push(el('span', { class: 'pager-info', text: `第 ${state.page} 页 / 共 ${totalPages} 页 (${state.total} 条)` }));
+    pages.push(el('span', { class: 'pager-info', text: t('list.pagerInfo', { page: state.page, totalPages, total: state.total }) }));
     if (state.page < totalPages) {
-      pages.push(el('button', { class: 'pager-btn', text: '下一页 →', on: { click: () => { state.page++; reload(); } } }));
+      pages.push(el('button', { class: 'pager-btn', text: t('list.pagerNext'), on: { click: () => { state.page++; reload(); } } }));
     }
     render(els.listPager, frag(pages));
   }
 
   function emptyState() {
     const cat = catOf(state.type);
+    const catLabel = cat ? t('category.' + cat.type, { default: cat.label }) : t('list.noLabel');
     const hasFilter = state.q || state.tags.length || state.status || state.dueFrom || state.dueTo || state.pinned !== null;
     return el('div', { class: 'empty', children: [
       el('div', { class: 'empty-icon', text: hasFilter ? '🔍' : '✎', attrs: { 'aria-hidden': 'true' } }),
-      el('p', { class: 'empty-title', text: hasFilter ? '没有符合条件的记录' : `还没有${cat.label}` }),
+      el('p', { class: 'empty-title', text: hasFilter ? t('list.emptyHasFilterTitle') : t('list.emptyNoFilterTitle', { catLabel }) }),
       el('p', { class: 'empty-desc', text: hasFilter
-        ? '试着放宽筛选条件，或清除全部筛选。'
-        : `把学习中冒出来的${cat.label}记下来，之后可以随时回看。` }),
+        ? t('list.emptyHasFilterDesc')
+        : t('list.emptyNoFilterDesc', { catLabel }) }),
       hasFilter
-        ? el('button', { class: 'btn btn-ghost', text: '清除全部筛选', on: { click: clearFilters } })
-        : el('button', { class: 'btn btn-primary', text: `记一条${cat.label}`, on: { click: openNewModal } }),
+        ? el('button', { class: 'btn btn-ghost', text: t('list.btnClearFilters'), on: { click: clearFilters } })
+        : el('button', { class: 'btn btn-primary', text: t('list.btnNewRecord', { catLabel }), on: { click: openNewModal } }),
     ]});
   }
 
@@ -1147,9 +1152,9 @@ if (exportMode) {
     } catch (e) {
       console.error('加载列表失败:', e);
       if (e.isNetwork) {
-        showError('无法连接到本地服务器。请确认 Pouch 服务已启动（运行 server\\start.ps1）。');
+        showError(t('list.networkError'));
       } else {
-        showError(e.message || '加载失败');
+        showError(e.message || t('list.loadFailed'));
       }
       currentItems = [];
       state.total = 0;
@@ -1161,7 +1166,7 @@ if (exportMode) {
 
   function updateTitle() {
     const cat = catOf(state.type);
-    els.listTitle.textContent = cat ? cat.label : '列表';
+    els.listTitle.textContent = cat ? t('category.' + cat.type, { default: cat.label }) : t('list.title');
   }
 // ============ 左侧导航 ============
   function renderSidebar() {
@@ -1172,7 +1177,7 @@ if (exportMode) {
       attrs: { 'data-cat': c.type, role: 'listitem' },
       children: [
         el('span', { class: 'cat-color', style: { background: `var(--cat-${c.type})` }, attrs: { 'aria-hidden': 'true' } }),
-        el('span', { class: 'cat-label', text: c.label }),
+        el('span', { class: 'cat-label', text: t('category.' + c.type, { default: c.label }) }),
         el('span', { class: 'cat-count', text: '0' }),
       ]
     }));
@@ -1186,7 +1191,7 @@ if (exportMode) {
         attrs: { role: 'listitem' },
         children: [
           el('span', { class: 'cat-color', style: { background: 'var(--cat-todo)' }, attrs: { 'aria-hidden': 'true' } }),
-          el('span', { class: 'cat-label', text: '心愿单' }),
+          el('span', { class: 'cat-label', text: t('nav.wishlist') }),
         ]
       })
     ]));
@@ -1196,7 +1201,7 @@ if (exportMode) {
   function openNewModal() {
     const cat = catOf(state.type);
     modalTags = [];
-    els.modalTitle.textContent = `新建${cat.label}`;
+    els.modalTitle.textContent = t('list.newRecordModalTitle');
     renderModalFields(cat);
     els.newRecordModal.showModal();
     els.modalBackdrop.hidden = false;
@@ -1215,21 +1220,21 @@ if (exportMode) {
 
   function renderModalFields(cat) {
     const fields = [
-      { name: 'title', label: '标题', type: 'text', required: true, maxlength: LIMITS.title, placeholder: '请输入标题' },
-      { name: 'content', label: '正文', type: 'textarea', rows: 8, placeholder: '支持 Markdown 语法' },
+      { name: 'title', label: t('list.modalFieldTitle'), type: 'text', required: true, maxlength: LIMITS.title, placeholder: t('list.modalPlaceholderTitle') },
+      { name: 'content', label: t('list.modalFieldContent'), type: 'textarea', rows: 8, placeholder: t('list.modalPlaceholderContent') },
     ];
     if (cat.fields.includes('source')) {
-      fields.push({ name: 'source', label: '来源', type: 'text', maxlength: LIMITS.source, placeholder: '如：书名、链接、课程名' });
+      fields.push({ name: 'source', label: t('list.modalFieldSource'), type: 'text', maxlength: LIMITS.source, placeholder: t('list.modalPlaceholderSource') });
     }
     if (cat.fields.includes('dueDate')) {
-      fields.push({ name: 'dueDate', label: '截止日期', type: 'date' });
+      fields.push({ name: 'dueDate', label: t('list.modalFieldDueDate'), type: 'date' });
     }
     if (cat.fields.includes('priority')) {
-      fields.push({ name: 'priority', label: '优先级', type: 'select', options: [
-        { value: 'low', text: '低' }, { value: 'normal', text: '普通' }, { value: 'high', text: '高' }
+      fields.push({ name: 'priority', label: t('list.modalFieldPriority'), type: 'select', options: [
+        { value: 'low', text: t('list.priorityLow') }, { value: 'normal', text: t('list.priorityNormal') }, { value: 'high', text: t('list.priorityHigh') }
       ], default: 'normal' });
     }
-    fields.push({ name: 'tags', label: '标签', type: 'tags' });
+    fields.push({ name: 'tags', label: t('list.modalFieldTags'), type: 'tags' });
 
     const children = fields.map(f => {
       if (f.type === 'tags') return tagsField();
@@ -1283,23 +1288,23 @@ if (exportMode) {
     const chips = el('div', { class: 'modal-tag-chips' });
     const input = el('input', {
       class: 'input', id: 'modal-tags-input', type: 'text',
-      placeholder: '输入后回车添加；用 / 可建子标签（如 Java/并发）',
-      attrs: { 'aria-label': '标签', list: 'modalTagSuggestions' },
+      placeholder: t('list.tagPlaceholder'),
+      attrs: { 'aria-label': t('list.tagAriaInput'), list: 'modalTagSuggestions' },
     });
     const list = el('datalist', { id: 'modalTagSuggestions' });
 
     const renderChips = () => {
-      render(chips, frag(modalTags.map(t => el('span', { class: 'badge badge-tag badge-editable', children: [
-        el('span', { text: t }),
-        el('button', { class: 'badge-x', text: '×', attrs: { 'aria-label': `移除标签 ${t}` },
-                       on: { click: () => { modalTags = modalTags.filter(x => x !== t); renderChips(); } } }),
+      render(chips, frag(modalTags.map(tag => el('span', { class: 'badge badge-tag badge-editable', children: [
+        el('span', { text: tag }),
+        el('button', { class: 'badge-x', text: '×', attrs: { 'aria-label': t('list.chipRemove', { text: tag }) },
+                       on: { click: () => { modalTags = modalTags.filter(x => x !== tag); renderChips(); } } }),
       ]}))));
     };
 
     // 候选来自已有标签；补全失败不影响手动输入
     API.tags(state.type).then(({ tags }) => {
       render(list, tags.filter(t => !modalTags.includes(t.tag)).slice(0, 50)
-                       .map(t => el('option', { value: t.tag, label: `${t.name || t.tag} · ${t.count} 条` })));
+                       .map(t => el('option', { value: t.tag, label: t('list.tagSuggestionLabel', { name: t.name || t.tag, count: t.count }) })));
     }).catch(() => {});
 
     const add = raw => {
@@ -1307,11 +1312,11 @@ if (exportMode) {
       if (!v) return;
       const segs = v.split('/');
       if (segs.length > 3 || segs.some(s => !s || s.length > 24)) {
-        toast('标签每段 1~24 字符、最多 3 层（如 Java/并发）');
+        toast(t('error.invalid_tags', { maxLen: 24, maxSegments: 3 }), 'error');
         return;
       }
-      if (modalTags.includes(v)) { toast('标签已存在'); return; }
-      if (modalTags.length >= LIMITS.tags) { toast(`标签最多 ${LIMITS.tags} 个`); return; }
+      if (modalTags.includes(v)) { toast(t('list.handleNewTagExists'), 'error'); return; }
+      if (modalTags.length >= LIMITS.tags) { toast(t('list.handleNewTagLimit', { limit: LIMITS.tags }), 'error'); return; }
       modalTags.push(v);
       renderChips();
       input.value = '';
@@ -1324,7 +1329,7 @@ if (exportMode) {
 
     renderChips();
     return el('div', { class: 'form-field', children: [
-      el('label', { attrs: { for: 'modal-tags-input' }, text: '标签' }),
+      el('label', { attrs: { for: 'modal-tags-input' }, text: t('list.modalFieldTags') }),
       input,
       list,
       chips,
@@ -1340,7 +1345,7 @@ if (exportMode) {
     for (const [k, v] of formData.entries()) {
       if (v !== '') data[k] = v;
     }
-    if (!data.title) { toast('标题不能为空'); return; }
+    if (!data.title) { toast(t('list.handleNewTitleEmpty'), 'error'); return; }
     // 若标签输入框有残留内容，将其作为新标签加入（无需按回车，点击创建即可）
     const tagInput = els.modalBody.querySelector('#modal-tags-input');
     if (tagInput && tagInput.value.trim()) {
@@ -1354,7 +1359,7 @@ if (exportMode) {
           }
           tagInput.value = '';
         } else {
-          toast('标签每段 1~24 字符、最多 3 层（如 Java/并发）');
+        toast(t('list.handleNewTagLimit', { limit: LIMITS.tags }), 'error');
         }
       }
     }
@@ -1362,24 +1367,24 @@ if (exportMode) {
 
     setLoading(true);
     els.modalSubmit.disabled = true;
-    els.modalSubmit.textContent = '创建中…';
+    els.modalSubmit.textContent = t('list.modalSubmit');
     try {
       await API.createRecord(state.type, data);
       modalTags = [];
       closeNewModal();
       await reload();
-      toast('创建成功', 'ok');
+      toast(t('list.createSuccess'), 'ok');
     } catch (err) {
       console.error('新建失败:', err);
-      if (err.code === 'invalid_title') toast('标题需 1~120 字符');
-      else if (err.code === 'invalid_due_date') toast('截止日期格式需 yyyy-MM-dd');
-      else if (err.code === 'invalid_priority') toast('优先级非法');
-      else if (err.code === 'invalid_tags') toast(err.message || '标签不合法：每段 1~24 字符、最多 3 层');
-      else toast('创建失败，请重试');
+      if (err.code === 'invalid_title') toast(t('list.titleTooLong'), 'error');
+      else if (err.code === 'invalid_due_date') toast(t('list.invalidDueDate'), 'error');
+      else if (err.code === 'invalid_priority') toast(t('list.invalidPriority'), 'error');
+      else if (err.code === 'invalid_tags') toast(err.message || t('list.handleNewTagLimit', { limit: LIMITS.tags }), 'error');
+      else toast(t('list.handleNewTitleEmpty'), 'error');
     } finally {
       setLoading(false);
       els.modalSubmit.disabled = false;
-      els.modalSubmit.textContent = '创建';
+      els.modalSubmit.textContent = t('list.modalSubmit');
     }
   }
 
@@ -1397,17 +1402,19 @@ if (exportMode) {
   // ============ 初始化 ============
   async function boot() {
     try {
+      await initLang();
       const catData = await API.categories();
       CATEGORIES = Array.isArray(catData?.categories) ? catData.categories : [];
       readStateFromURL();
+      applyI18n();
       renderSidebar();
       refreshOverviewCounts();   // 侧栏计数徽标：进入页面即有真实计数（用户故事 27）
       await reload();
     } catch (e) {
       console.error('初始化失败:', e);
       showError(e.isNetwork
-        ? '无法连接到本地服务器。请确认 Pouch 服务已启动（运行 server\\start.ps1）。'
-        : '初始化失败，请刷新重试');
+        ? t('list.networkError')
+        : t('list.initFailed'));
     }
   }
-boot();
+  boot();
