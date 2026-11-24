@@ -27,6 +27,7 @@
  */
 import { API, LIMITS } from '/js/api.js';
 import { el, render, frag, excerpt, relTime, fullTime, toast, statusLabel, renderWarnings, errorCard, renderMarkdown, renderLatexText, bindLocalFileLinks } from '/js/dom.js';
+import { initLang, t, getLang, applyI18n } from '/js/i18n.js';
 
 // ============ 常量 ============
 
@@ -35,10 +36,7 @@ const MAX_CONTENT = LIMITS.content;
 const MAX_NOTE = LIMITS.note;
 const MAX_TAGS = LIMITS.tags;
 
-/** 状态 → 引导文案。问题只有在"答案被写下来"之后才算真正解决（用户故事 76）。 */
-const STATUS_GUIDES = {
-  resolved: '问题已标记为已解决。把答案补充到正文或笔记里——未来翻出这条记录时，答案本身才是能被看到的东西。'
-};
+/** 状态 → 引导文案。问题只有在"答案被写下来"之后才算真正解决（用户故事 76）。文案通过 t() 动态获取。 */
 
 // ============ 页面元素 ============
 
@@ -82,6 +80,7 @@ function markdownNode(src, cls, images = []) {
 // ============ 启动 ============
 
 async function boot() {
+  await initLang();
   els.backBtn.addEventListener('click', () => goBack());
   // 输入实时同步进草稿（isDirty / 取消拦截 / beforeunload 都依赖它）
   els.content.addEventListener('input', syncDraft);
@@ -99,13 +98,20 @@ async function boot() {
     CATEGORIES = Array.isArray(catData?.categories) ? catData.categories : [];
     record = rec;
   } catch (e) {
-    if (e?.code === 'record_not_found') showFatal('记录不存在或已被删除', e.message);
-    else showFatal('无法加载这条记录', e);
+    if (e?.code === 'record_not_found') showFatal(t('detail.toastRecordNotFound'), e);
+    else showFatal(t('detail.toastLoadFailed'), e);
     return;
   }
 
   renderAll();
+  applyI18n();
   loadWarnings();
+
+  // 语言切换后重新渲染页面（JS 生成的文案 + data-i18n 元素）
+  document.addEventListener('pouch:langchange', () => {
+    renderAll();
+    applyI18n();
+  });
 }
 
 function renderAll() {
@@ -123,44 +129,43 @@ function renderAll() {
 function renderToolbar() {
   render(els.toolbarActions, editing
     ? frag([
-        el('button', { type: 'button', class: 'btn btn-primary', id: 'saveBtn', text: '保存',
+        el('button', { type: 'button', class: 'btn btn-primary', id: 'saveBtn', text: t('detail.btnSave'),
                        on: { click: save } }),
-        el('button', { type: 'button', class: 'btn btn-ghost', text: '取消',
+        el('button', { type: 'button', class: 'btn btn-ghost', text: t('detail.btnCancel'),
                        on: { click: confirmDiscard } }),
       ])
-    : el('button', { type: 'button', class: 'btn', text: '编辑', on: { click: enterEdit } }));
+    : el('button', { type: 'button', class: 'btn', text: t('detail.btnEdit'), on: { click: enterEdit } }));
 }
 
 function renderHeader() {
   const cat = catOf(record.type);
   render(els.header, frag([
     el('div', { class: 'detail-badges', children: [
-      el('span', { class: ['badge', `badge-${record.type}`], text: cat ? cat.label : record.type }),
+      el('span', { class: ['badge', `badge-${record.type}`], text: cat ? t('category.' + cat.type, { default: cat.label }) : record.type }),
       el('span', { class: ['badge', `badge-status-${record.status}`], text: statusLabel(cat, record.status) }),
-      record.pinned ? el('span', { class: 'badge badge-pinned', text: '已置顶' }) : null,
+      record.pinned ? el('span', { class: 'badge badge-pinned', text: t('detail.badgePinned') }) : null,
     ]}),
     el('h1', { class: 'detail-title', html: renderLatexText(record.title) }),
     record.source
       ? el('p', { class: 'detail-subtitle', children: [
-          el('span', { class: 'detail-source', text: `来源：${record.source}` }),
+          el('span', { class: 'detail-source', text: `${t('detail.labelSource')}: ${record.source}` }),
         ] })
       : null,
     el('p', { class: 'detail-meta', children: [
-      el('span', { text: `创建于 ${fullTime(record.createdAt)}` }),
+      el('span', { text: `${t('detail.labelCreated')} ${fullTime(record.createdAt)}` }),
       el('span', { text: '·' }),
-      el('span', { text: `更新于 ${relTime(record.updatedAt)}`, attrs: { title: fullTime(record.updatedAt) } }),
+      el('span', { text: `${t('detail.labelUpdated')} ${relTime(record.updatedAt)}`, attrs: { title: fullTime(record.updatedAt) } }),
     ]}),
   ]));
 }
 
 /** 问题标记已解决后的答案引导（用户故事 76）。 */
 function renderGuide() {
-  const guide = STATUS_GUIDES[record.status];
-  if (!guide) { els.guide.hidden = true; render(els.guide, []); return; }
+  if (record.status !== 'resolved') { els.guide.hidden = true; render(els.guide, []); return; }
   els.guide.hidden = false;
   render(els.guide, el('div', { class: 'detail-guide-box', attrs: { role: 'note' }, children: [
-    el('strong', { text: '已解决 ✓' }),
-    el('span', { text: guide }),
+    el('strong', { text: t('detail.guideResolvedTitle') }),
+    el('span', { text: t('detail.guideResolvedDesc') }),
   ]}));
 }
 
@@ -178,11 +183,11 @@ function renderContent() {
   const cat = catOf(draft.type);
   inputs = {
     title: el('input', { type: 'text', class: 'input input-title', id: 'edit-title',
-                         value: draft.title, maxLength: 120, attrs: { 'aria-label': '标题' } }),
+                         value: draft.title, maxLength: 120, attrs: { 'aria-label': t('detail.labelTitle') } }),
     content: el('textarea', { class: 'input input-content', id: 'edit-content', rows: 18,
-                              value: draft.content, placeholder: '用 Markdown 写…',
-                              maxLength: MAX_CONTENT, attrs: { 'aria-label': '正文' } }),
-    type: el('select', { class: 'select', id: 'edit-type', attrs: { 'aria-label': '类别' },
+                              value: draft.content, placeholder: t('detail.placeholderContent'),
+                              maxLength: MAX_CONTENT, attrs: { 'aria-label': t('detail.labelContent') } }),
+    type: el('select', { class: 'select', id: 'edit-type', attrs: { 'aria-label': t('detail.labelType') },
                          on: { change: e => changeDraftType(e.target.value) },
                          children: CATEGORIES.map(c => el('option', {
                            value: c.type, text: c.label, selected: c.type === draft.type,
@@ -191,26 +196,26 @@ function renderContent() {
 
   render(els.content, frag([
     el('div', { class: 'form-field', children: [
-      el('label', { attrs: { for: 'edit-title' }, text: '标题' }),
+      el('label', { attrs: { for: 'edit-title' }, text: t('detail.labelTitle') }),
       inputs.title,
     ]}),
     el('div', { class: 'form-field', children: [
-      el('label', { attrs: { for: 'edit-type' }, text: '类别' }),
+      el('label', { attrs: { for: 'edit-type' }, text: t('detail.labelType') }),
       inputs.type,
     ]}),
     el('div', { class: 'form-field', children: [
-      el('label', { attrs: { for: 'edit-content' }, text: '正文' }),
+      el('label', { attrs: { for: 'edit-content' }, text: t('detail.labelContent') }),
       el('div', { class: 'edit-content-wrap', children: [
         inputs.content,
         el('div', { class: 'edit-buttons', children: [
-          el('button', { type: 'button', class: 'btn btn-primary', id: 'edit-insert-image', text: '插入图片',
+          el('button', { type: 'button', class: 'btn btn-primary', id: 'edit-insert-image', text: t('detail.btnInsertImage'),
                          on: { click: insertImage } }),
-          el('button', { type: 'button', class: 'btn btn-primary', id: 'edit-link-file', text: '链接文件',
+          el('button', { type: 'button', class: 'btn btn-primary', id: 'edit-link-file', text: t('detail.btnLinkFile'),
                          on: { click: linkFile } }),
         ]}),
       ]}),
     ]}),
-    el('div', { class: 'edit-hint', text: '支持 Markdown 语法。Ctrl+Enter 保存，Esc 取消。' }),
+    el('div', { class: 'edit-hint', text: t('detail.hintMarkdown') }),
     el('div', { class: 'detail-extra', id: 'detailExtra' }),
   ]));
 
@@ -228,24 +233,24 @@ function renderContent() {
  */
 const FIELD_EDITORS = {
   source: {
-    label: '来源', aria: '来源', required: false,
+    label: t('detail.labelSource'), aria: '来源', required: false,
     control: v => el('input', { type: 'text', class: 'input', id: 'edit-source',
                                 value: v || '', maxLength: 200,
-                                placeholder: '如：书名、链接、课程名', attrs: { 'aria-label': '来源' } }),
+                                placeholder: t('detail.placeholderSource'), attrs: { 'aria-label': t('detail.labelSource') } }),
   },
   dueDate: {
-    label: '截止日期', aria: '截止日期', required: false,
+    label: t('detail.labelDueDate'), aria: '截止日期', required: false,
     control: v => el('input', { type: 'date', class: 'input input-date', id: 'edit-dueDate',
-                                value: v || '', attrs: { 'aria-label': '截止日期' } }),
+                                value: v || '', attrs: { 'aria-label': t('detail.labelDueDate') } }),
   },
   priority: {
-    label: '优先级', aria: '优先级', required: false,
+    label: t('detail.labelPriority'), aria: '优先级', required: false,
     control: v => el('select', { class: 'select', id: 'edit-priority',
-                                 attrs: { 'aria-label': '优先级' },
+                                 attrs: { 'aria-label': t('detail.labelPriority') },
                                  children: [
-                                   el('option', { value: 'low', text: '低', selected: v === 'low' }),
-                                   el('option', { value: 'normal', text: '普通', selected: (v || 'normal') === 'normal' }),
-                                   el('option', { value: 'high', text: '高', selected: v === 'high' }),
+                                   el('option', { value: 'low', text: t('detail.priorityLow'), selected: v === 'low' }),
+                                   el('option', { value: 'normal', text: t('detail.priorityNormal'), selected: (v || 'normal') === 'normal' }),
+                                   el('option', { value: 'high', text: t('detail.priorityHigh'), selected: v === 'high' }),
                                  ] }),
   },
 };
@@ -283,8 +288,9 @@ function changeDraftType(nextType) {
   const from = catOf(draft.type);
   const to = catOf(nextType);
   const ok = confirm(
-    `将类别从「${from ? from.label : draft.type}」改为「${to ? to.label : nextType}」？\n\n` +
-    `id 保持不变；不再适用的专有字段（如截止日期、优先级）会在保存时自动清空。`);
+    `${t('detail.confirmChangeType', { from: from ? from.label : draft.type, to: to ? to.label : nextType })}\n\n` +
+    `${t('detail.confirmChangeTypeDesc')}`
+  );
   if (!ok) { inputs.type.value = draft.type; return; }
 
   // 目标类别同样支持的专有字段保留原值（如 question→knowledge 的 source，docs/03 §3.3 示例 3）；
@@ -298,7 +304,8 @@ function changeDraftType(nextType) {
   renderExtraFields(catOf(nextType));
   const missing = fieldsOf(nextType).find(f => FIELD_EDITORS[f]?.required && !draft[f]);
   if (missing) {
-    toast(`转为「${to?.label || nextType}」需要填写${FIELD_EDITORS[missing].label.replace('（必填）', '')}`);
+    const fieldLabel = FIELD_EDITORS[missing].label.replace('（必填）', '');
+    toast(t('detail.toastNeedField', { cat: to?.label || nextType, field: fieldLabel }));
     inputs[missing]?.focus();
   }
 }
@@ -346,16 +353,17 @@ function collectDraft() {
 
 async function save() {
   collectDraft();
-  if (!draft.title) { toast('标题不能为空'); inputs.title.focus(); return; }
+  if (!draft.title) { toast(t('detail.toastTitleRequired')); inputs.title.focus(); return; }
   if (draft.content.length > MAX_CONTENT) {
-    toast(`正文过长（${draft.content.length} 字符），上限 ${MAX_CONTENT} 字符`);
+    toast(`${t('detail.toastContentTooLong', { len: draft.content.length, max: MAX_CONTENT })}`);
     inputs.content.focus();
     return;
   }
   const cat = catOf(draft.type);
   const missing = fieldsOf(draft.type).find(f => FIELD_EDITORS[f]?.required && !draft[f]);
   if (missing) {
-    toast(`${cat.label}必须指定${FIELD_EDITORS[missing].label.replace('（必填）', '')}`);
+    const fieldLabel = FIELD_EDITORS[missing].label.replace('（必填）', '');
+    toast(cat.label + t('detail.toastNeedField2', { field: fieldLabel }));
     inputs[missing]?.focus();
     return;
   }
@@ -370,18 +378,18 @@ async function save() {
   }
 
   const saveBtn = document.getElementById('saveBtn');
-  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '保存中…'; }
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = t('detail.btnSaving'); }
   try {
     // 跨类别变更：新 type 走查询参数（docs/03 §3.3），id 由服务端保持不变
     record = await API.updateRecord(record.id, patch, typeChanged ? draft.type : undefined);
     exitEdit();
-    toast('已保存', 'ok');
+    toast(t('detail.toastSaved'), 'ok');
   } catch (e) {
     // ★ 失败不退出编辑态：草稿完整保留在输入框里供重试（docs/04 §4.9.4）
-    if (e?.code === 'invalid_due_date') { toast('截止日期格式需 yyyy-MM-dd'); inputs.dueDate?.focus(); }
-    else toast(e?.message || '保存失败，请重试');
+    if (e?.code === 'invalid_due_date') { toast(t('detail.toastInvalidDueDate')); inputs.dueDate?.focus(); }
+    else toast(e?.message || t('detail.toastSaveFailed'));
   } finally {
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '保存'; }
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = t('detail.btnSave'); }
   }
 }
 
@@ -398,7 +406,7 @@ function insertAtCursor(textarea, text) {
 /** 图片压缩：file → 缩放（最长边 1600）→ WebP 0.85 → base64 纯字符串。 */
 async function compressImage(file) {
   const MAX_BYTES = 5 * 1024 * 1024;   // 原始文件上限 5 MB
-  if (file.size > MAX_BYTES) throw new Error('图片过大，建议不超过 5 MB');
+  if (file.size > MAX_BYTES) throw new Error(t('detail.toastImageTooLarge'));
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -421,12 +429,12 @@ async function compressImage(file) {
           const base64 = dataUrl.split(',')[1];
           resolve({ mime: 'image/webp', size: blob.size, width, height, base64 });
         };
-        reader.onerror = () => reject(new Error('图片读取失败'));
+        reader.onerror = () => reject(new Error(t('detail.toastImageReadFailed')));
         reader.readAsDataURL(blob);
       }, 'image/webp', 0.85);
       URL.revokeObjectURL(img.src);
     };
-    img.onerror = () => reject(new Error('图片加载失败'));
+    img.onerror = () => reject(new Error(t('detail.toastImageLoadFailed')));
     img.src = URL.createObjectURL(file);
   });
 }
@@ -445,10 +453,10 @@ async function insertImage() {
       const id = `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       draft.images = draft.images || [];
       draft.images.push({ id, mime: data.mime, size: data.size, width: data.width, height: data.height, data: data.base64 });
-      insertAtCursor(inputs.content, `![图片](img:${id})`);
-      toast('图片已插入', 'ok');
+      insertAtCursor(inputs.content, `![${t('detail.imageAlt')}](img:${id})`);
+      toast(t('detail.toastImageInserted'), 'ok');
     } catch (err) {
-      toast('图片插入失败：' + (err.message || '未知错误'));
+      toast(t('detail.toastImageInsertFailed') + ': ' + (err.message || t('detail.unknownError')));
     }
   };
   input.click();
@@ -483,14 +491,14 @@ function linkFile() {
       boxShadow: '0 8px 24px rgba(0,0,0,0.25)'
     },
     children: [
-      el('h3', { class: 'dialog-title', text: '链接本地文件', style: { marginTop: 0, marginBottom: 'var(--sp-4)', fontSize: 'var(--fs-md)' } }),
-      el('p', { class: 'dialog-hint', text: '请输入文件的完整路径，例如：C:/Users/Admin/Documents/doc.pdf', style: { fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginBottom: 'var(--sp-4)' } }),
+      el('h3', { class: 'dialog-title', text: t('detail.dialogLinkFileTitle'), style: { marginTop: 0, marginBottom: 'var(--sp-4)', fontSize: 'var(--fs-md)' } }),
+      el('p', { class: 'dialog-hint', text: t('detail.dialogLinkFileHint'), style: { fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginBottom: 'var(--sp-4)' } }),
       el('input', {
         class: 'input input-text',
         id: 'linkFilePathInput',
         attrs: {
-          placeholder: 'C:/...',
-          'aria-label': '文件路径'
+          placeholder: t('detail.placeholderFilePath'),
+          'aria-label': t('detail.ariaFilePath')
         },
         style: { width: '100%', boxSizing: 'border-box', marginBottom: 'var(--sp-4)' }
       }),
@@ -498,14 +506,14 @@ function linkFile() {
         el('button', {
           type: 'button',
           class: 'btn btn-ghost',
-          text: '取消',
+          text: t('detail.btnCancel'),
           on: { click: () => document.body.removeChild(backdrop) }
         }),
         el('button', {
           type: 'button',
           class: 'btn btn-primary',
           id: 'linkFileConfirmBtn',
-          text: '确认插入',
+          text: t('detail.btnConfirmInsert'),
           on: { click: () => {
             const inputEl = document.getElementById('linkFilePathInput');
             const rawPath = inputEl.value.trim();
@@ -515,7 +523,7 @@ function linkFile() {
             }
             const displayName = rawPath.split(/[/\\]/).pop() || rawPath;
             insertAtCursor(inputs.content, `[${displayName}](local-file:${rawPath})`);
-            toast('已插入文件链接', 'ok');
+            toast(t('detail.toastFileLinkInserted'), 'ok');
             document.body.removeChild(backdrop);
           } }
         })
@@ -542,7 +550,7 @@ function linkFile() {
 }
 
 function confirmDiscard() {
-  if (isDirty() && !confirm('放弃未保存的更改？')) return;
+  if (isDirty() && !confirm(t('detail.confirmDiscard'))) return;
   exitEdit();
 }
 
@@ -553,8 +561,16 @@ function confirmDiscard() {
  * statusActionLabel 表达"进入目标状态"的动作（如"标记完成"）；
  * 已在目标状态时反转为"标记未X"（如"标记未完成"），回到默认状态。
  */
+// 状态切换主按钮文案映射：按类别映射到 i18n key，避免硬编码后端返回的中文标签
+const ACTION_KEYS = {
+  inspiration: 'detail.actionArchive',
+  question: 'detail.actionResolve',
+  knowledge: 'detail.actionMaster',
+  todo: 'detail.actionDone',
+};
+
 function statusAction(cat, status) {
-  const actionLabel = cat?.statusActionLabel || '切换状态';
+  const actionLabel = cat?.statusActionLabel || t('detail.btnSwitchStatus');
   const statuses = cat?.statuses || [];
   const bare = actionLabel.replace(/^标记/, '');
   let target = null;
@@ -565,18 +581,18 @@ function statusAction(cat, status) {
 
   if (target && status === target) {
     const t = statusLabel(cat, target);
-    return { text: t.startsWith('已') ? `标记未${t.slice(1)}` : `取消${t}`, next: cat.defaultStatus };
+    return { text: t('detail.btnUndoStatus', { label: t }), next: cat.defaultStatus() };
   }
-  return { text: actionLabel, next: target };
+  return { text: t(ACTION_KEYS[cat?.type], { default: actionLabel }), next: target };
 }
 
 async function flipStatus(next) {
   try {
     record = await API.updateRecord(record.id, { status: next });
     renderAll();
-    toast('状态已更新', 'ok');
+    toast(t('detail.toastStatusUpdated'), 'ok');
   } catch (e) {
-    toast(e?.message || '状态更新失败');
+    toast(e?.message || t('detail.toastStatusUpdateFailed'));
     renderFooter();   // 重绘即回滚，UI 与服务端保持一致
   }
 }
@@ -586,14 +602,14 @@ async function flipStatus(next) {
 function renderTags() {
   const tags = record.tags || [];
   render(els.tags, frag([
-    el('h2', { class: 'detail-section-title', text: '标签' }),
+    el('h2', { class: 'detail-section-title', text: t('detail.sectionTags') }),
     el('div', { class: 'tag-list', id: 'tagList', children: [
       ...tags.map(t => el('span', { class: ['badge', 'badge-tag', 'badge-editable'], children: [
         el('span', { text: t }),
         el('button', { class: 'badge-x', text: '×', attrs: { 'aria-label': `移除标签 ${t}` },
                        on: { click: () => removeTag(t) } }),
       ]})),
-      el('button', { class: 'badge badge-add', text: '+ 添加标签', on: { click: showTagInput } }),
+      el('button', { class: 'badge badge-add', text: t('detail.btnAddTag'), on: { click: showTagInput } }),
     ]}),
   ]));
 }
@@ -601,8 +617,8 @@ function renderTags() {
 function showTagInput() {
   const host = document.getElementById('tagList');
   if (!host) return;
-  const input = el('input', { class: 'tag-input', placeholder: '输入后回车；/ 可建子标签', maxLength: 80,
-                              attrs: { 'aria-label': '新标签', list: 'tagSuggestions' } });
+  const input = el('input', { class: 'tag-input', placeholder: t('detail.placeholderTagInput'), maxLength: 80,
+                              attrs: { 'aria-label': t('detail.ariaTagNew'), list: 'tagSuggestions' } });
   const list = el('datalist', { id: 'tagSuggestions' });
 
   // 候选来自 /api/meta/tags（完整层级路径），排除已用标签；补全失败不影响手动输入
@@ -625,16 +641,16 @@ function showTagInput() {
     if (e.key === 'Enter') {
       e.preventDefault();
       const v = normalizeTagInput(input.value);
-      if (!v) { toast('标签每段 1~24 字符、最多 3 层'); return; }
-      if (used.has(v)) { toast('标签已存在'); return; }
-      if ((record.tags || []).length >= MAX_TAGS) { toast(`标签最多 ${MAX_TAGS} 个`); return; }
+      if (!v) { toast(t('detail.toastTagFormat')); return; }
+      if (used.has(v)) { toast(t('detail.toastTagExists')); return; }
+      if ((record.tags || []).length >= MAX_TAGS) { toast(t('detail.toastTagLimit')); return; }
       try {
         // API 无单独标签端点：本地算好数组后整体 PATCH（数组内单条增删由前端完成）
         record = await API.updateRecord(record.id, { tags: [...new Set([...(record.tags || []), v])] });
         renderTags();
         renderHeader();
-        toast('已添加标签', 'ok');
-      } catch (err) { toast(err?.message || '添加标签失败'); }
+        toast(t('detail.toastTagAdded'), 'ok');
+      } catch (err) { toast(t('detail.toastTagAddFailed')); }
     }
     if (e.key === 'Escape') renderTags();
   });
@@ -648,8 +664,8 @@ async function removeTag(t) {
     record = await API.updateRecord(record.id, { tags: (record.tags || []).filter(x => x !== t) });
     renderTags();
     renderHeader();
-    toast('已移除标签', 'ok');
-  } catch (e) { toast(e?.message || '移除标签失败'); }
+    toast(t('detail.toastTagRemoved'), 'ok');
+  } catch (e) { toast(t('detail.toastTagRemoveFailed')); }
 }
 
 // ============ 笔记（追加 / 编辑 / 删除，逐条操作，docs/03 §3.4） ============
@@ -657,9 +673,9 @@ async function removeTag(t) {
 function renderNotes() {
   const notes = record.notes || [];
   render(els.notes, frag([
-    el('h2', { class: 'detail-section-title', text: `笔记 (${notes.length})` }),
+    el('h2', { class: 'detail-section-title', text: `${t('detail.sectionNotes')} (${notes.length})` }),
     notes.length === 0
-      ? el('p', { class: 'empty-hint', text: '还没有笔记。事后想到什么可以补在这里，不会覆盖原正文。' })
+      ? el('p', { class: 'empty-hint', text: t('detail.noNotes') })
       : el('ul', { class: 'note-list', children: notes.map(noteItem) }),
     noteComposer(),
   ]));
@@ -672,12 +688,12 @@ function noteItem(n) {
     el('div', { class: 'note-head', children: [
       el('time', { class: 'note-time', text: fullTime(n.createdAt), attrs: { datetime: n.createdAt } }),
       n.updatedAt
-        ? el('span', { class: 'note-edited', text: `（编辑于 ${relTime(n.updatedAt)}）`,
+        ? el('span', { class: 'note-edited', text: t('detail.editedAt', { time: relTime(n.updatedAt) }),
                        attrs: { title: fullTime(n.updatedAt) } })
         : null,
       el('span', { class: 'note-actions', children: [
-        el('button', { class: 'link-btn', text: '编辑', on: { click: () => { noteEditingId = n.id; renderNotes(); } } }),
-        el('button', { class: 'link-btn link-btn-danger', text: '删除', on: { click: () => removeNote(n) } }),
+        el('button', { class: 'link-btn', text: t('detail.btnEdit'), on: { click: () => { noteEditingId = n.id; renderNotes(); } } }),
+        el('button', { class: 'link-btn link-btn-danger', text: t('detail.btnDelete'), on: { click: () => removeNote(n) } }),
       ]}),
     ]}),
     markdownNode(n.content, 'note-body', record.images || []),
@@ -686,27 +702,26 @@ function noteItem(n) {
 
 function noteEditor(n) {
   const area = el('textarea', { class: 'input note-edit-area', rows: 5, value: n.content,
-                                maxLength: MAX_NOTE, attrs: { 'aria-label': '笔记内容' } });
+                                maxLength: MAX_NOTE, attrs: { 'aria-label': t('detail.ariaNoteContent') } });
   return el('li', { class: 'note-item is-editing', attrs: { 'data-note-id': n.id }, children: [
     el('div', { class: 'note-head', children: [
       el('time', { class: 'note-time', text: fullTime(n.createdAt), attrs: { datetime: n.createdAt } }),
       el('span', { class: 'note-actions', children: [
-        el('button', { class: 'link-btn', text: '保存', on: { click: async () => {
+        el('button', { class: 'link-btn', text: t('detail.btnSave'), on: { click: async () => {
           const text = area.value.trim();
-          if (!text) { toast('笔记不能为空'); return; }
+          if (!text) { toast(t('detail.toastNoteEmpty')); return; }
           try {
             record = await API.editNote(record.id, n.id, text);
             noteEditingId = null;
             renderNotes();
-            renderHeader();   // 父记录 updatedAt 已刷新
+            renderHeader();
             renderFooter();
-            toast('笔记已更新', 'ok');
+            toast(t('detail.toastNoteUpdated'), 'ok');
           } catch (e) {
-            // 失败不清空编辑框，用户可重试（docs/04 §4.9.4）
-            toast(e?.message || '保存笔记失败');
+            toast(e?.message || t('detail.toastNoteSaveFailed'));
           }
         } } }),
-        el('button', { class: 'link-btn', text: '取消', on: { click: () => { noteEditingId = null; renderNotes(); } } }),
+        el('button', { class: 'link-btn', text: t('detail.btnCancel'), on: { click: () => { noteEditingId = null; renderNotes(); } } }),
       ]}),
     ]}),
     area,
@@ -715,9 +730,9 @@ function noteEditor(n) {
 
 function noteComposer() {
   const area = el('textarea', { class: 'input note-composer-input', rows: 3,
-                                placeholder: '写下新的想法…（支持 Markdown）', id: 'noteInput',
-                                maxLength: MAX_NOTE, attrs: { 'aria-label': '新笔记' } });
-  const add = el('button', { type: 'button', class: 'btn btn-primary', text: '添加',
+                                placeholder: t('detail.placeholderNote'), id: 'noteInput',
+                                maxLength: MAX_NOTE, attrs: { 'aria-label': t('detail.ariaNoteNew') } });
+  const add = el('button', { type: 'button', class: 'btn btn-primary', text: t('detail.btnAddNote'),
                              on: { click: async () => {
     const text = area.value.trim();
     if (!text) { area.focus(); return; }
@@ -728,9 +743,9 @@ function noteComposer() {
       renderNotes();
       renderHeader();   // updatedAt 同步刷新（用户故事 43）
       renderFooter();
-      toast('已添加笔记', 'ok');
+      toast(t('detail.toastNoteAdded'), 'ok');
     } catch (e) {
-      toast(e?.message || '添加笔记失败');   // 失败不清空输入框，用户可重试
+      toast(e?.message || t('detail.toastNoteAddFailed'));   // 失败不清空输入框，用户可重试
     } finally {
       add.disabled = false;
     }
@@ -740,15 +755,15 @@ function noteComposer() {
 
 async function removeNote(n) {
   // 删除不可逆（虽有备份，但用户不知道），必须二次确认
-  if (!confirm(`确定删除这条笔记？\n\n「${excerpt(n.content, 60)}」`)) return;
+  if (!confirm(t('detail.confirmDeleteNote', { excerpt: excerpt(n.content, 60) }))) return;
   try {
     record = await API.deleteNote(record.id, n.id);
     if (noteEditingId === n.id) noteEditingId = null;
     renderNotes();
     renderHeader();
     renderFooter();
-    toast('笔记已删除', 'ok');
-  } catch (e) { toast(e?.message || '删除笔记失败'); }
+    toast(t('detail.toastNoteDeleted'), 'ok');
+  } catch (e) { toast(t('detail.toastNoteDeleteFailed')); }
 }
 
 // ============ 元信息面板 + 置顶开关 ============
@@ -758,34 +773,34 @@ function renderFooter() {
   const act = statusAction(cat, record.status);
 
   const metaRows = [
-    ['创建于', fullTime(record.createdAt)],
-    ['更新于', `${fullTime(record.updatedAt)}（${relTime(record.updatedAt)}）`],
-    ['状态', statusLabel(cat, record.status)],
-    record.source ? ['来源', record.source] : null,
-    record.dueDate ? ['截止日期', record.dueDate] : null,
-    record.priority ? ['优先级', { low: '低', normal: '普通', high: '高' }[record.priority] || record.priority] : null,
-    record.doneAt ? ['完成于', fullTime(record.doneAt)] : null,
+    [t('detail.labelCreated'), fullTime(record.createdAt)],
+    [t('detail.labelUpdated'), `${fullTime(record.updatedAt)}（${relTime(record.updatedAt)}）`],
+    [t('detail.labelStatus'), statusLabel(cat, record.status)],
+    record.source ? [t('detail.labelSource'), record.source] : null,
+    record.dueDate ? [t('detail.labelDueDate'), record.dueDate] : null,
+    record.priority ? [t('detail.labelPriority'), { low: t('detail.priorityLow'), normal: t('detail.priorityNormal'), high: t('detail.priorityHigh') }[record.priority] || record.priority] : null,
+    record.doneAt ? [t('detail.labelDoneAt'), fullTime(record.doneAt)] : null,
   ].filter(Boolean);
 
   // 编辑态不渲染可写操作：状态切换/置顶/删除都会整体重绘，
   // 会把编辑中的草稿冲掉（用户故事 41：草稿深拷贝是编辑期间的唯一工作区）。
   const actionArea = editing
-    ? el('p', { class: 'detail-edit-lock', text: '编辑中：保存或取消后可切换状态、置顶或删除。' })
+    ? el('p', { class: 'detail-edit-lock', text: t('detail.msgEditing') })
     : frag([
         el('div', { class: 'detail-footer-main', children: [
           el('button', { type: 'button', class: 'btn btn-primary', text: act.text,
                          on: { click: () => flipStatus(act.next) } }),
           el('label', { class: 'pin-toggle', children: [
             el('input', { type: 'checkbox', checked: record.pinned,
-                          attrs: { 'aria-label': '置顶这条记录' },
+                          attrs: { 'aria-label': t('detail.ariaPin') },
                           on: { change: e => togglePin(e.target) } }),
-            el('span', { text: '置顶' }),
+            el('span', { text: t('detail.labelPin') }),
           ]}),
         ]}),
         el('div', { class: 'detail-danger-zone', children: [
           el('button', { type: 'button', class: 'link-btn link-btn-danger detail-delete',
-                         text: '删除这条记录', on: { click: confirmDelete } }),
-          el('span', { class: 'detail-delete-hint', text: '硬删除。删除后可从 data/.backup/ 恢复。' }),
+                         text: t('detail.btnDeleteRecord'), on: { click: confirmDelete } }),
+          el('span', { class: 'detail-delete-hint', text: t('detail.hintDeleteRecord') }),
         ]}),
       ]);
 
@@ -801,10 +816,10 @@ async function togglePin(input) {
   input.disabled = true;
   try {
     record = await API.updateRecord(record.id, { pinned: next });
-    toast(next ? '已置顶' : '已取消置顶', 'ok');
+    toast(next ? t('detail.toastPinned') : t('detail.toastUnpinned'), 'ok');
   } catch (e) {
     input.checked = !next;   // 失败回滚（docs/04 §4.9.4）
-    toast(e?.message || '操作失败');
+    toast(e?.message || t('detail.toastOpFailed'));
   } finally {
     input.disabled = false;
     renderHeader();   // 置顶徽标同步
@@ -812,12 +827,12 @@ async function togglePin(input) {
 }
 
 async function confirmDelete() {
-  if (!confirm(`确定删除「${record.title}」吗？\n\n删除后可从 data/.backup/ 恢复。`)) return;
+  if (!confirm(t('detail.confirmDeleteRecord', { title: record.title }))) return;
   try {
     await API.deleteRecord(record.id);
-    toast('已删除', 'ok');
+    toast(t('detail.toastDeleted'), 'ok');
     setTimeout(() => goBack(true), 300);
-  } catch (e) { toast(e?.message || '删除失败'); }
+  } catch (e) { toast(e?.message || t('detail.toastDeleteFailed')); }
 }
 
 // ============ 返回逻辑（history.back 优先，from 兜底，用户故事 75） ============
@@ -870,8 +885,8 @@ function showFatal(title, e) {
   els.card.hidden = true;
   render(els.toolbarActions, []);
   render(els.error, errorCard(title, e, [
-    { text: '重试', onClick: () => location.reload() },
-    { text: '返回列表', onClick: () => goBack(true) },
+    { text: t('detail.btnRetry'), onClick: () => location.reload() },
+    { text: t('detail.btnBackToList'), onClick: () => goBack(true) },
   ]));
 }
 
